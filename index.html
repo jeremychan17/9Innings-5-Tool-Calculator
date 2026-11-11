@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLB 9 Innings Lineup &amp; 5T Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E1518;
+    --panel:#162024;
+    --panel-2:#1B282D;
+    --line:#25373E;
+    --line-soft:#1F2E34;
+    --ink:#E6EFF0;
+    --muted:#7E969E;
+    --accent:#F2B441;
+    --pos:#5BD0A4;
+    --neg:#E4735F;
+    --seg-basic:#3E6C7A;
+    --seg-gi:#4E8C7D;
+    --seg-dev:#F2B441;
+    --seg-set:#8A6FA8;
+    --seg-special:#E48A4C;
+    --seg-sig:#C9578A;
+    --seg-bd:#6FA3C4;
+    --seg-trainer:#9BB33F;
+    --r:3px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    font-size:14px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 64px}
+
+  /* ---- tabs ---- */
+  .tabnav{display:flex;gap:4px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+  .tabbtn{
+    font-family:"Barlow Condensed",sans-serif;font-weight:600;font-size:15px;
+    letter-spacing:.08em;text-transform:uppercase;
+    background:transparent;color:var(--muted);border:none;
+    padding:9px 4px;margin-right:20px;cursor:pointer;
+    border-bottom:2px solid transparent;
+  }
+  .tabbtn:hover{color:var(--ink)}
+  .tabbtn.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tabpanel{display:none}
+  .tabpanel.active{display:block}
+
+  /* ---- 5T specific ---- */
+  .lockgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:4px}
+  .lockcell{background:var(--panel-2);border:1px solid var(--line-soft);border-radius:var(--r);padding:7px 4px;text-align:center}
+  .lockcell .lc-lab{font-family:"Barlow Condensed",sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .lockcell .lc-val{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink);margin-top:2px}
+  .ceil-block{margin-bottom:16px}
+  .ceil-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:7px}
+  .ceil-title{font-family:"Barlow Condensed",sans-serif;font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+  .ceil-floor{font-family:"IBM Plex Mono",monospace;font-size:19px;color:var(--accent);font-weight:600}
+  .ceil-desc{font-size:11px;color:var(--muted);margin-bottom:8px}
+  .target-row{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
+  .target-row .fld{max-width:140px}
+  .diff-badge{
+    display:inline-block;font-family:"Barlow Condensed",sans-serif;font-weight:700;
+    font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+    padding:3px 10px;border-radius:20px;
+  }
+  .diff-comfortable{background:rgba(91,208,164,.15);color:var(--pos)}
+  .diff-doable{background:rgba(242,180,65,.15);color:var(--accent)}
+  .diff-tough{background:rgba(228,138,76,.18);color:#E48A4C}
+  .diff-veryhard{background:rgba(228,115,95,.18);color:var(--neg)}
+  .diff-impossible{background:rgba(228,115,95,.28);color:var(--neg)}
+  .warn{font-size:11px;color:#E48A4C;margin-top:8px}
+
+  /* ---- masthead ---- */
+  header{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:16px;flex-wrap:wrap;
+    border-bottom:2px solid var(--line);
+    padding-bottom:12px;margin-bottom:22px;
+  }
+  h1{
+    font-family:"Barlow Condensed",sans-serif;
+    font-weight:700;font-size:34px;letter-spacing:.04em;
+    text-transform:uppercase;margin:0;line-height:1;
+  }
+  h1 span{color:var(--accent)}
+  .sub{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:500}
+
+  /* ---- panels ---- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--r);
+    padding:16px;
+    margin-bottom:18px;
+  }
+  .panel-hd{
+    font-family:"Barlow Condensed",sans-serif;
+    font-weight:600;font-size:15px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);
+    border-bottom:1px solid var(--line-soft);
+    padding-bottom:8px;margin-bottom:14px;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+
+  /* ---- card meta ---- */
+  .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  label{
+    display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;margin-bottom:5px;
+  }
+  input[type=text],select{
+    width:100%;background:var(--panel-2);color:var(--ink);
+    border:1px solid var(--line);border-radius:var(--r);
+    padding:7px 9px;font-family:"IBM Plex Sans",sans-serif;font-size:13px;
+  }
+  select{cursor:pointer}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+  /* ---- stat table ---- */
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;min-width:640px}
+  th,td{padding:0;text-align:center}
+  thead th{
+    font-family:"Barlow Condensed",sans-serif;
+    font-weight:600;font-size:13px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--muted);padding:0 0 9px;border-bottom:1px solid var(--line);
+  }
+  thead th.rowlab{text-align:left;width:150px}
+  thead th.total{color:var(--accent)}
+  tbody th{
+    text-align:left;font-weight:500;font-size:12px;color:var(--muted);
+    padding:0 10px 0 0;white-space:nowrap;
+  }
+  tbody tr{height:36px}
+  tbody tr.input-row th{color:var(--ink)}
+  tbody td{border-bottom:1px solid var(--line-soft)}
+  tbody tr.input-row th::after{
+    content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:var(--accent);margin-left:7px;vertical-align:middle;
+  }
+  .num{
+    width:56px;background:transparent;color:var(--ink);
+    border:1px solid transparent;border-radius:var(--r);
+    padding:5px 4px;text-align:center;
+    font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:500;
+  }
+  .num:hover{border-color:var(--line)}
+  .num:focus{outline:none;border-color:var(--accent);background:var(--panel-2)}
+  .num::-webkit-outer-spin-button,.num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .num{-moz-appearance:textfield}
+  .val{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--muted)}
+  .val.locked{color:#5E757C}
+  td.total-cell{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--accent);font-weight:500}
+
+  tr.result{background:rgba(242,180,65,.05)}
+  tr.result td,tr.result th{border-top:1px solid var(--line);border-bottom:none}
+  tr.result th{color:var(--ink);font-weight:600;font-size:12px;letter-spacing:.04em}
+  tr.result .val,tr.result .total-cell{font-size:17px;font-weight:600;color:var(--ink)}
+  tr.result .total-cell{color:var(--accent)}
+  tr.chem .val{color:var(--pos)}
+  tr.lst .val{color:#9FB6BD}
+
+  /* ---- signature: build stack ---- */
+  .stacks{display:grid;gap:11px}
+  .stack-row{display:grid;grid-template-columns:78px 1fr 46px;align-items:center;gap:11px}
+  .stack-lab{
+    font-family:"Barlow Condensed",sans-serif;font-size:13px;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--muted);text-align:right;
+  }
+  .bar{display:flex;height:17px;background:var(--panel-2);border-radius:2px;overflow:hidden}
+  .seg{height:100%;transition:width .35s cubic-bezier(.2,.7,.3,1)}
+  .stack-val{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);text-align:left}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:15px;padding-top:12px;border-top:1px solid var(--line-soft)}
+  .key{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+  .swatch{width:9px;height:9px;border-radius:2px;flex:none}
+
+  /* ---- buttons ---- */
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{
+    font-family:"Barlow Condensed",sans-serif;font-weight:600;
+    font-size:13px;letter-spacing:.1em;text-transform:uppercase;
+    background:var(--panel-2);color:var(--ink);
+    border:1px solid var(--line);border-radius:var(--r);
+    padding:7px 14px;cursor:pointer;
+  }
+  button:hover{border-color:var(--muted)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  button.primary{background:var(--accent);color:#12191C;border-color:var(--accent)}
+  button.primary:hover{filter:brightness(1.08)}
+  button.ghost{background:transparent;color:var(--muted)}
+  button.danger:hover{border-color:var(--neg);color:var(--neg)}
+
+  /* ---- compare ---- */
+  .cmp-head{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;margin-bottom:14px}
+  .cmp-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--line-soft);border:1px solid var(--line-soft);border-radius:var(--r);overflow:hidden}
+  .cmp-cell{background:var(--panel);padding:9px 6px;text-align:center}
+  .cmp-cell.hd{background:var(--panel-2)}
+  .cmp-lab{font-family:"Barlow Condensed",sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .cmp-num{font-family:"IBM Plex Mono",monospace;font-size:15px;margin-top:2px}
+  .cmp-delta{font-family:"IBM Plex Mono",monospace;font-size:12px;margin-top:2px}
+  .up{color:var(--pos)}.down{color:var(--neg)}.flat{color:var(--muted)}
+
+  .empty{color:var(--muted);font-size:13px;padding:6px 0}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);
+    background:var(--accent);color:#12191C;padding:9px 18px;border-radius:var(--r);
+    font-family:"Barlow Condensed",sans-serif;font-weight:600;letter-spacing:.09em;
+    text-transform:uppercase;font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .note{font-size:11px;color:var(--muted);margin-top:10px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:560px){
+    h1{font-size:26px}
+    .stack-row{grid-template-columns:62px 1fr 40px}
+    .cmp-grid{grid-template-columns:repeat(3,1fr)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Lineup <span>Calculator</span></h1>
+      <div class="sub">MLB 9 Innings — card build sheet</div>
+    </div>
+    <div class="btns" id="tabActions">
+      <button id="btnSave" class="primary">Save build</button>
+      <button id="btnClear" class="ghost">Clear</button>
+    </div>
+  </header>
+
+  <div class="tabnav">
+    <button class="tabbtn active" id="tabbtn-normal" data-tab="normal">Normal Lineup</button>
+    <button class="tabbtn" id="tabbtn-5t" data-tab="5t">5T Calculator</button>
+  </div>
+
+  <div id="tab-normal" class="tabpanel active">
+
+  <!-- CARD META -->
+  <section class="panel">
+    <div class="panel-hd">Card</div>
+    <div class="meta">
+      <div>
+        <label for="fName">Name</label>
+        <input type="text" id="fName" placeholder="Griffey">
+      </div>
+      <div>
+        <label for="fType">Type</label>
+        <select id="fType">
+          <option value="Signature">Signature</option>
+          <option value="Supreme" selected>Supreme</option>
+          <option value="Legend">Legend</option>
+        </select>
+      </div>
+      <div>
+        <label for="fChem">Active chemistry</label>
+        <select id="fChem">
+          <option value="0">None</option>
+          <option value="7">Non-Legend (+7)</option>
+          <option value="8">Legend (+8)</option>
+        </select>
+      </div>
+      <div>
+        <label for="fNotes">Notes</label>
+        <input type="text" id="fNotes" placeholder="HH/Pred/Char">
+      </div>
+    </div>
+  </section>
+
+  <!-- STAT TABLE -->
+  <section class="panel">
+    <div class="panel-hd">
+      <span>Build</span>
+      <span style="font-size:11px;letter-spacing:.04em;text-transform:none">Dotted rows are your inputs</span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="rowlab">&nbsp;</th>
+            <th>Con / Loc</th><th>Pow / Vel</th><th>Eye / Sta</th><th>Spd / Fb</th><th>Fld / Brk</th>
+            <th class="total">Total</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="note" id="specialNote"></div>
+  </section>
+
+  <!-- SIGNATURE VISUAL -->
+  <section class="panel">
+    <div class="panel-hd">Where the stat comes from</div>
+    <div class="stacks" id="stacks"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <!-- COMPARE -->
+  <section class="panel">
+    <div class="panel-hd">Compare</div>
+    <div class="cmp-head">
+      <div>
+        <label for="fCompare">Saved build</label>
+        <select id="fCompare"><option value="">Pick a saved build…</option></select>
+      </div>
+      <div class="btns">
+        <button id="btnLoad">Load</button>
+        <button id="btnDelete" class="danger">Delete</button>
+      </div>
+    </div>
+    <div class="cmp-head" style="margin-bottom:12px">
+      <div class="note" style="margin:0">Backup: saved builds live only in this browser. Export them to a JSON file to keep a copy or move them to another device.</div>
+      <div class="btns">
+        <button id="btnExport">Export JSON</button>
+        <button id="btnImport">Import JSON</button>
+        <input type="file" id="fileImport" accept="application/json,.json" style="display:none">
+      </div>
+    </div>
+    <div id="cmpOut"><div class="empty">Pick a saved build to see it next to the one you're working on.</div></div>
+  </section>
+
+  </div>
+
+  <div id="tab-5t" class="tabpanel">
+
+  <!-- SOURCE CARD -->
+  <section class="panel">
+    <div class="panel-hd">Card</div>
+    <div class="cmp-head">
+      <div>
+        <label for="t5Source">Load from</label>
+        <select id="t5Source"><option value="">Pick a saved build…</option></select>
+      </div>
+      <div class="btns">
+        <button id="t5Load">Load</button>
+      </div>
+    </div>
+    <div class="meta" style="margin-top:12px">
+      <div>
+        <label for="t5NameInput">Name</label>
+        <input type="text" id="t5NameInput" placeholder="Griffey">
+      </div>
+      <div>
+        <label for="t5TypeInput">Type</label>
+        <select id="t5TypeInput">
+          <option value="Signature">Signature</option>
+          <option value="Supreme">Supreme</option>
+          <option value="Legend">Legend</option>
+        </select>
+      </div>
+      <div>
+        <label for="t5LevelInput">Max level</label>
+        <select id="t5LevelInput"></select>
+      </div>
+      <div>
+        <label>Dev pool</label>
+        <div class="lockcell"><div class="lc-val" id="t5Pool">—</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BASIC / GI (locked) + DEV (editable) -->
+  <section class="panel">
+    <div class="panel-hd">
+      <span>Build</span>
+      <button id="t5ResetDev" class="ghost" style="padding:4px 10px;font-size:11px">Reset Development to 0</button>
+    </div>
+    <div class="note" style="margin-top:-6px;margin-bottom:10px">All three rows are editable — loading a card just fills in a starting point.</div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="rowlab">&nbsp;</th>
+            <th>Con / Loc</th><th>Pow / Vel</th><th>Eye / Sta</th><th>Spd / Fb</th><th>Fld / Brk</th>
+            <th class="total">Total</th>
+          </tr>
+        </thead>
+        <tbody id="t5body"></tbody>
+      </table>
+    </div>
+    <div class="note">LST Total = the lowest of the five (Basic + GI + Development) category totals.</div>
+  </section>
+
+  <!-- 5T SKILL POINTS -->
+  <section class="panel">
+    <div class="panel-hd">5T skill points — Level 8</div>
+    <div class="meta">
+      <div>
+        <label>Current LST</label>
+        <div class="lockcell"><div class="lc-val" id="t5SkillLST">—</div></div>
+      </div>
+      <div>
+        <label>Points added per skill</label>
+        <div class="lockcell"><div class="lc-val" id="t5SkillPts">—</div></div>
+      </div>
+    </div>
+    <div class="note" id="t5SkillNote">Based on your current Basic + GI + Development.</div>
+  </section>
+
+  <!-- MAX THEORETICAL -->
+  <section class="panel">
+    <div class="panel-hd">Maximum theoretical LST</div>
+
+    <div class="ceil-block">
+      <div class="ceil-hd">
+        <span class="ceil-title">True ceiling</span>
+        <span class="ceil-floor" id="ceilTrueFloor">—</span>
+      </div>
+      <div class="ceil-desc">Every development point lands exactly where you'd want it — no randomness. The upper bound of what's mathematically possible with your full pool.</div>
+      <div class="lockgrid" id="ceilTrueGrid"></div>
+      <div class="note" id="ceilTrueExtra"></div>
+    </div>
+
+    <div class="ceil-block">
+      <div class="ceil-hd">
+        <span class="ceil-title">Realistic ceiling</span>
+        <span class="ceil-floor" id="ceilRealFloor">—</span>
+      </div>
+      <div class="ceil-desc">Development tickets go exactly where you need them; the rest of the pool is random and assumed to land at its statistical average (~1/5 per category), capped at what's typically achievable in a single stat.</div>
+      <div class="lockgrid" id="ceilRealGrid"></div>
+      <div class="note" id="ceilRealExtra"></div>
+    </div>
+  </section>
+
+  <!-- TARGET SOLVER -->
+  <section class="panel">
+    <div class="panel-hd">
+      <span>Target LST</span>
+      <span style="font-size:11px;letter-spacing:.04em;text-transform:none">Treats whatever's in the Development row above as already committed</span>
+    </div>
+    <div class="target-row">
+      <div class="fld">
+        <label for="t5Target">Target (all 5 stats)</label>
+        <input type="text" id="t5Target" value="110">
+      </div>
+      <button id="t5Solve" class="primary">Solve</button>
+      <button id="t5PushDev" class="ghost">Push to Development</button>
+      <span id="t5AdjustedNote" class="warn" style="display:none"></span>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="rowlab">&nbsp;</th>
+            <th>Con / Loc</th><th>Pow / Vel</th><th>Eye / Sta</th><th>Spd / Fb</th><th>Fld / Brk</th>
+            <th class="total">Total</th>
+          </tr>
+        </thead>
+        <tbody id="t5solveBody"></tbody>
+      </table>
+    </div>
+
+    <div class="note" id="t5SpareNote"></div>
+    <div class="note" id="t5TargetSkillNote"></div>
+
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line-soft)">
+      <div class="ceil-hd" style="margin-bottom:4px">
+        <span class="ceil-title">How hard is this train</span>
+        <span class="diff-badge" id="t5DiffBadge">—</span>
+      </div>
+      <div class="note" id="t5DiffScore" style="margin-top:0;margin-bottom:10px;font-size:12px"></div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="rowlab">&nbsp;</th>
+              <th>Con / Loc</th><th>Pow / Vel</th><th>Eye / Sta</th><th>Spd / Fb</th><th>Fld / Brk</th>
+            </tr>
+          </thead>
+          <tbody id="t5diffBody"></tbody>
+        </table>
+      </div>
+      <div class="note" id="t5DiffNote"></div>
+    </div>
+  </section>
+
+  </div>
+
+</div>
+<div style="text-align:center;font-size:11px;color:var(--muted);padding:6px 0 28px" id="verLabel">v1.1 · Supreme level 35 · JSON backup</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   MLB 9 Innings — Normal Lineup Calculator
+   Model (verified against Jeremy's sheet):
+     Normal Lineup Stat = Basic + GI + Development + Set Deck
+                          + Special + Sig + Black Diamond + Trainer
+     Set Deck / Black Diamond : from card Type
+     Special : dev rank -> 1st +12, 2nd +10, 3rd +4, rest 0
+     LST     : Basic + GI + Development ; LST Total = lowest of the five
+     w/ Chem : Normal Lineup Stat + chem bonus (7 or 8)
+
+   5T Calculator model:
+     Dev pool  : Supreme 87 (max level 30) or 102 (max level 35) / Signature+Legend 57
+     Tickets   : Supreme 5 tickets = 15 controllable points (17-20, 28-30)
+                 Supreme L35: +1 ticket for the 30-35 stretch = 18 controllable;
+                   the other 4 levels (12 pts) are random
+                 Sig/Legend 3 tickets = 9 controllable points (17-20)
+     Random    : pool - ticketPoints, each point independently lands in
+                 1 of 5 categories with equal (1/5) probability (Model A)
+     Practical single-stat cap (soft, from observed rolls): Supreme ~40, Sig/Legend ~25
+   ============================================================ */
+
+var CATS = ["con","pow","eye","spd","fld"];
+var CAT_LABELS = ["Con/Loc","Pow/Vel","Eye/Sta","Spd/Fb","Fld/Brk"];
+
+// Type -> per-category Set Deck, Black Diamond and Sig values
+var TYPES = {
+  Signature: { set: 12, bd: 2, sig: 12 },
+  Supreme:   { set: 10, bd: 2, sig: 0  },
+  Legend:    { set: 10, bd: 2, sig: 0  }
+};
+
+var SPECIAL_AWARDS = [12, 10, 4];   // 1st, 2nd, 3rd highest development
+
+// 5T Calculator — dev pool / ticket / practical-cap rules by type
+var TYPE_DEV = {
+  Signature: { pool: 57, ticketPoints: 9,  practicalCap: 25 },
+  Legend:    { pool: 57, ticketPoints: 9,  practicalCap: 25 },
+  Supreme:   { pool: 87, ticketPoints: 15, practicalCap: 40 }
+};
+// Supreme with the level 35 mechanic: +15 pool (5 levels x 3). One extra
+// ticket (3 pts) is directable; the other 4 levels (12 pts) are random.
+var SUPREME_L35 = { pool: 102, ticketPoints: 18, practicalCap: 45 };
+
+var SEGMENTS = [
+  { key:"basic",   label:"Basic",         css:"--seg-basic" },
+  { key:"gi",      label:"GI",            css:"--seg-gi" },
+  { key:"dev",     label:"Development",   css:"--seg-dev" },
+  { key:"set",     label:"Set Deck",      css:"--seg-set" },
+  { key:"special", label:"Special",       css:"--seg-special" },
+  { key:"sig",     label:"Sig",           css:"--seg-sig" },
+  { key:"bd",      label:"Black Diamond", css:"--seg-bd" },
+  { key:"trainer", label:"Trainer",       css:"--seg-trainer" }
+];
+
+var INPUT_ROWS = [
+  { key:"basic",   label:"Basic",       agg:"avg" },
+  { key:"gi",      label:"GI",          agg:"sum" },
+  { key:"dev",     label:"Development", agg:"sum" },
+  { key:"trainer", label:"Trainer",     agg:"sum" }
+];
+
+/* ---------- storage (localStorage when available, memory otherwise) ---------- */
+var Store = (function(){
+  var KEY = "mlb9.lineupBuilds.v1";
+  var mem = {};
+  var ok = false;
+  try {
+    var probe = "__probe__";
+    window.localStorage.setItem(probe, "1");
+    window.localStorage.removeItem(probe);
+    ok = true;
+  } catch (e) { ok = false; }
+
+  function readAll(){
+    if (!ok) return mem;
+    try { return JSON.parse(window.localStorage.getItem(KEY) || "{}"); }
+    catch (e) { return {}; }
+  }
+  function writeAll(obj){
+    if (!ok) { mem = obj; return; }
+    try { window.localStorage.setItem(KEY, JSON.stringify(obj)); }
+    catch (e) { mem = obj; }
+  }
+  return {
+    persistent: ok,
+    all:  readAll,
+    get:  function(n){ return readAll()[n] || null; },
+    put:  function(n,b){ var a = readAll(); a[n] = b; writeAll(a); },
+    drop: function(n){ var a = readAll(); delete a[n]; writeAll(a); }
+  };
+})();
+
+/* ---------- state ---------- */
+function blankBuild(){
+  var b = { name:"", type:"Supreme", chem:0, notes:"" };
+  INPUT_ROWS.forEach(function(r){
+    b[r.key] = { con:0, pow:0, eye:0, spd:0, fld:0 };
+  });
+  return b;
+}
+
+// Blank on open — no example data, no name pre-filled
+var build = blankBuild();
+
+/* ---------- math ---------- */
+function specialFor(dev, basic){
+  // Rank categories by development, highest first.
+  // Tie -> higher base stat wins. Still tied -> fixed category order
+  // (Con, Pow, Eye, Spd, Fld). That last fallback is a guess, unverified.
+  var order = CATS.slice().sort(function(a,b){
+    if (dev[b] !== dev[a]) return dev[b] - dev[a];
+    if ((basic[b]||0) !== (basic[a]||0)) return (basic[b]||0) - (basic[a]||0);
+    return CATS.indexOf(a) - CATS.indexOf(b);
+  });
+  var out = { con:0, pow:0, eye:0, spd:0, fld:0 };
+  for (var i = 0; i < SPECIAL_AWARDS.length; i++){
+    if (dev[order[i]] > 0) out[order[i]] = SPECIAL_AWARDS[i];
+  }
+  return { values: out, order: order.slice(0,3) };
+}
+
+function compute(b){
+  var t = TYPES[b.type] || TYPES.Supreme;
+  var sp = specialFor(b.dev, b.basic);
+
+  var parts = {
+    basic: b.basic, gi: b.gi, dev: b.dev, trainer: b.trainer,
+    set: {}, bd: {}, sig: {}, special: sp.values
+  };
+  CATS.forEach(function(c){
+    parts.set[c] = t.set;
+    parts.bd[c]  = t.bd;
+    parts.sig[c] = t.sig;
+  });
+
+  var normal = {}, lst = {}, chem = {};
+  CATS.forEach(function(c){
+    normal[c] = SEGMENTS.reduce(function(sum, s){ return sum + (parts[s.key][c] || 0); }, 0);
+    lst[c]    = (b.basic[c]||0) + (b.gi[c]||0) + (b.dev[c]||0);
+    chem[c]   = normal[c] + Number(b.chem || 0);
+  });
+
+  return {
+    parts: parts,
+    special: sp,
+    normal: normal,
+    lst: lst,
+    chem: chem,
+    normalAvg: avg(normal),
+    lstMin: Math.min.apply(null, CATS.map(function(c){ return lst[c]; }))
+  };
+}
+
+function sum(o){ return CATS.reduce(function(s,c){ return s + (o[c]||0); }, 0); }
+function avg(o){ return Math.round((sum(o)/CATS.length) * 100) / 100; }
+
+/* ============================================================
+   5T CALCULATOR MATH
+   Dev points only ever come in whole numbers (each level-up hands out
+   3 whole points), so every function below works in integers only —
+   no fractional dev points anywhere in this section.
+   ============================================================ */
+
+// Level-8 5T skill points, keyed by LST. Values between listed LSTs use
+// the nearest listed value at or below (the chart looks like a step
+// function, not a smooth line, so this is closer to the real shape than
+// interpolating). Below the lowest listed LST (78) there's no data.
+// Above 105 there's a confirmed point at 110 but nothing for 106-109 —
+// those fall back to the 105 value and are flagged as approximate.
+var FIVETOOL_LV8 = [
+  [78,8],[79,8],[80,8],[81,8],[82,8],
+  [83,9],[84,9],[85,9],[86,9],[87,9],
+  [88,11],[89,11],
+  [90,12],[91,12],[92,12],
+  [93,13],[94,13],
+  [95,14],[96,14],[97,14],
+  [98,15],[99,15],
+  [100,16],[101,16],[102,16],
+  [103,17],[104,17],
+  [105,18],
+  [110,20]
+];
+function fiveToolLv8(lst){
+  if (lst == null || isNaN(lst)) return { pts: null, approx: false };
+  var v = Math.floor(lst);
+  if (v < FIVETOOL_LV8[0][0]) return { pts: null, approx: false };
+  var pts = null, exactHit = false;
+  for (var i = 0; i < FIVETOOL_LV8.length; i++){
+    if (FIVETOOL_LV8[i][0] <= v){ pts = FIVETOOL_LV8[i][1]; exactHit = (FIVETOOL_LV8[i][0] === v); }
+    else break;
+  }
+  return { pts: pts, approx: !exactHit };
+}
+
+// Water-filling, integer-only: repeatedly give the single lowest
+// category +1 point until the pool is spent. Provably optimal for
+// maximizing the minimum under whole-number increments.
+// Returns { dev:{con..}, floor:integer }
+function waterFillCeiling(bases, pool){
+  pool = Math.max(0, Math.round(pool));
+  var dev = {};
+  CATS.forEach(function(c){ dev[c] = 0; });
+  var remaining = pool;
+  while (remaining > 0){
+    var minC = CATS[0], minV = Infinity;
+    CATS.forEach(function(c){
+      var v = (bases[c]||0) + dev[c];
+      if (v < minV){ minV = v; minC = c; }
+    });
+    dev[minC] += 1;
+    remaining -= 1;
+  }
+  var floor = Math.min.apply(null, CATS.map(function(c){ return (bases[c]||0) + dev[c]; }));
+  return { dev: dev, floor: floor };
+}
+
+// Same maximized floor as waterFillCeiling, but doesn't auto-dump leftover
+// points into whichever category happened to be lowest last -- once every
+// category is guaranteed to hit the floor, any points beyond that are
+// truly free to place anywhere without changing the floor, so they're
+// reported separately as "extra" rather than baked into specific stats.
+function trueCeilingFloorOnly(bases, pool){
+  var wf = waterFillCeiling(bases, pool);
+  var floor = wf.floor;
+  var dev = {};
+  CATS.forEach(function(c){ dev[c] = Math.max(0, floor - (bases[c]||0)); });
+  var used = sum(dev);
+  var extra = pool - used;
+  return { dev: dev, floor: floor, extra: extra };
+}
+
+// Realistic ceiling: tickets placed optimally (integer) on top of the
+// *average* expected random contribution per category (a statistical
+// estimate, so this one baseline stays a decimal), capped at the
+// practical single-stat cap. Same "don't auto-allocate leftovers" logic
+// as trueCeilingFloorOnly -- any tickets not needed to reach the floor
+// are reported as extra rather than dumped into an arbitrary category.
+function realisticCeiling(bases, typeInfo){
+  var randomPoints = typeInfo.pool - typeInfo.ticketPoints;
+  var randomAvg = randomPoints / 5;
+  var boosted = {};
+  CATS.forEach(function(c){ boosted[c] = (bases[c]||0) + randomAvg; });
+
+  var wf = waterFillCeiling(boosted, typeInfo.ticketPoints);
+  var rawFloor = wf.floor;
+
+  var ticketNeeded = {};
+  CATS.forEach(function(c){ ticketNeeded[c] = Math.max(0, Math.round(rawFloor - boosted[c])); });
+  var ticketExtra = Math.max(0, typeInfo.ticketPoints - sum(ticketNeeded));
+
+  var dev = {}, values = {};
+  CATS.forEach(function(c){
+    var totalDev = Math.min(ticketNeeded[c] + randomAvg, typeInfo.practicalCap);
+    dev[c] = Math.round(totalDev);
+    values[c] = Math.round((bases[c]||0) + totalDev);
+  });
+  var floor = Math.min.apply(null, CATS.map(function(c){ return values[c]; }));
+  return { dev: dev, values: values, floor: floor, ticketExtra: ticketExtra };
+}
+
+// P(X >= k) for X ~ Binomial(n, p), computed without factorial overflow.
+// This is the "if this were the only stat that needed help" marginal odds.
+function binomialAtLeast(k, n, p){
+  if (k <= 0) return 1;
+  if (k > n) return 0;
+  var q = 1 - p;
+  var pmf = Math.pow(q, n);       // P(X = 0)
+  var cumBelow = 0;                // P(X <= k-1)
+  for (var i = 0; i < k; i++){
+    cumBelow += pmf;
+    pmf = pmf * (n - i) / (i + 1) * (p / q);
+  }
+  var result = 1 - cumBelow;
+  if (result < 0) result = 0;
+  if (result > 1) result = 1;
+  return result;
+}
+
+// Exact probability that ALL 5 categories simultaneously clear their
+// "at least need[c]" thresholds when n random points are thrown one at a
+// time into 5 equally-likely categories. This is what actually matters —
+// two stats each needing 20+ points doesn't multiply their marginal odds,
+// it's much worse than that, because every point one stat gets is a point
+// the other one didn't. Computed via sequential multinomial conditioning:
+// given `remaining` points left to place among categories catIndex..4,
+// this category's count is Binomial(remaining, 1/slotsLeft) since all
+// remaining slots are equally likely; recurse on whatever's left. The
+// last category always absorbs the remainder with certainty.
+function jointProbability(need, n){
+  var needArr = CATS.map(function(c){ return need[c]||0; });
+  var memo = {};
+  function f(catIndex, remaining){
+    if (catIndex === 4) return remaining >= needArr[4] ? 1 : 0;
+    var key = catIndex + "," + remaining;
+    if (memo[key] !== undefined) return memo[key];
+    var slots = 5 - catIndex;
+    var p = 1 / slots, q = 1 - p;
+    var pmf = Math.pow(q, remaining);
+    var total = 0;
+    for (var x = 0; x <= remaining; x++){
+      if (x >= needArr[catIndex]) total += pmf * f(catIndex + 1, remaining - x);
+      if (x < remaining) pmf = pmf * (remaining - x) / (x + 1) * (p / q);
+    }
+    memo[key] = total;
+    return total;
+  }
+  var result = f(0, n);
+  if (result < 0) result = 0;
+  if (result > 1) result = 1;
+  return result;
+}
+
+// Ticket spending, integer-only: repeatedly knock 1 point off whichever
+// category currently has the largest remaining shortfall. Provably
+// optimal for minimizing the worst shortfall under whole-point tickets.
+function ticketLevelSolve(requiredDev, ticketBudget){
+  ticketBudget = Math.max(0, Math.round(ticketBudget));
+  var ticketAlloc = {};
+  CATS.forEach(function(c){ ticketAlloc[c] = 0; });
+  var remaining = ticketBudget;
+  while (remaining > 0){
+    var maxC = null, maxV = 0;
+    CATS.forEach(function(c){
+      var shortfall = (requiredDev[c]||0) - ticketAlloc[c];
+      if (shortfall > maxV){ maxV = shortfall; maxC = c; }
+    });
+    if (maxC === null) break; // every category's requirement is already fully covered
+    ticketAlloc[maxC] += 1;
+    remaining -= 1;
+  }
+  var postNeed = {};
+  CATS.forEach(function(c){ postNeed[c] = Math.max(0, (requiredDev[c]||0) - ticketAlloc[c]); });
+  return { postNeed: postNeed, ticketAlloc: ticketAlloc };
+}
+
+// Primary difficulty read, built around resets: Supreme can reset to
+// level 1 (full restart) or level 20 (keep the front half, only reroll
+// the last 8 random level-ups + final 2 tickets); Sig/Legend only reset
+// to level 1. Either way, you get to keep retrying the random portion
+// rather than living with a single blind roll -- so what actually kills
+// a train isn't "bad luck on one attempt," it's needing MORE in a stat
+// than random level-ups realistically ever produce, no matter how many
+// times you retry. That's the practical single-stat cap (~40 Supreme,
+// ~25 Sig/Legend). A build is hard when one stat needs close to or past
+// that ceiling, or when two stats are both pushing hard at once within
+// the same reroll batch -- matching the "no huge ask in any one or two
+// stats" read of an easy card.
+function assessPracticalDifficulty(randomNeed, typeInfo){
+  var cap = typeInfo.practicalCap;
+  var demanding = 0; // categories using >=75% of the practical cap
+  var overCap = 0;   // categories exceeding the practical cap outright
+  var ratios = CATS.map(function(c){ return cap > 0 ? (randomNeed[c]||0) / cap : 0; })
+                    .sort(function(a,b){ return b - a; });
+  var maxRatio = ratios[0], secondRatio = ratios[1];
+  var maxCat = null, maxV = -1;
+  CATS.forEach(function(c){
+    var ratio = cap > 0 ? (randomNeed[c]||0) / cap : 0;
+    if (ratio > maxV){ maxV = ratio; maxCat = c; }
+    if (ratio >= 1) overCap++;
+    else if (ratio >= 0.75) demanding++;
+  });
+
+  var label, cls;
+  if (overCap >= 2){ label = "Near Impossible"; cls = "diff-impossible"; }
+  else if (overCap === 1){ label = "Very Hard"; cls = "diff-veryhard"; }
+  else if (demanding >= 2){ label = "Very Hard"; cls = "diff-veryhard"; }
+  else if (demanding === 1){ label = "Tough"; cls = "diff-tough"; }
+  else if (maxRatio >= 0.5){ label = "Doable"; cls = "diff-doable"; }
+  else { label = "Comfortable"; cls = "diff-comfortable"; }
+
+  // Continuous 0-10 read of the same thing, in the style of community
+  // tools that score trains this way. Weighted mostly on the single
+  // worst stat (8 of the 10 points), with a smaller add-on for a second
+  // stat also running hot (2 points) -- so one demanding stat tops out
+  // around 8, and two demanding stats at once pushes toward 9-10.
+  var score = 8 * maxRatio + 2 * secondRatio;
+  if (score < 0) score = 0;
+  if (score > 10) score = 10;
+  score = Math.round(score * 100) / 100;
+  var scoreBand;
+  if (score < 4) scoreBand = "Easy";
+  else if (score < 6) scoreBand = "Somewhat difficult";
+  else if (score < 8) scoreBand = "Moderately difficult";
+  else if (score < 9) scoreBand = "Statistically unlikely";
+  else scoreBand = "Highly statistically unlikely";
+
+  return {
+    label: label, cls: cls, maxRatio: maxRatio, maxCat: maxCat,
+    demandingCount: demanding, overCapCount: overCap, cap: cap,
+    score: score, scoreBand: scoreBand
+  };
+}
+
+// poolInfo = { pool, ticketPoints } for whatever's still uncommitted.
+function difficultyFor(requiredDev, poolInfo, practicalCap){
+  var ticketBudget = Math.min(poolInfo.ticketPoints, poolInfo.pool);
+  var randomPoints = Math.max(0, poolInfo.pool - ticketBudget);
+  var solved = ticketLevelSolve(requiredDev, ticketBudget);
+
+  var ticketAlloc = solved.ticketAlloc, randomNeed = {}, prob = {};
+  var bottleneck = null, bottleneckProb = 1;
+  CATS.forEach(function(c){
+    var need = solved.postNeed[c];
+    randomNeed[c] = need;
+    var p = binomialAtLeast(need, randomPoints, 0.2);
+    prob[c] = p;
+    if (p < bottleneckProb){ bottleneckProb = p; bottleneck = c; }
+  });
+
+  // Secondary/reference stat only: odds of nailing it in a single blind
+  // roll with zero resets. Not realistic given resets exist, but useful
+  // context for how much resets are actually buying you.
+  var jointProb = jointProbability(randomNeed, randomPoints);
+
+  var practical = assessPracticalDifficulty(randomNeed, { practicalCap: practicalCap });
+
+  return {
+    ticketAlloc: ticketAlloc, randomNeed: randomNeed, prob: prob,
+    bottleneck: bottleneck, bottleneckProb: bottleneckProb,
+    jointProb: jointProb,
+    label: practical.label, cls: practical.cls,
+    maxRatio: practical.maxRatio, maxCat: practical.maxCat,
+    demandingCount: practical.demandingCount, overCapCount: practical.overCapCount,
+    cap: practical.cap, score: practical.score, scoreBand: practical.scoreBand
+  };
+}
+
+// Solve for the dev still needed to bring every category to `target`,
+// treating whatever's already in the Development row as committed.
+// Only the *remaining* pool (pool minus what's already entered) is
+// available to spend, and the ceiling is recomputed from here rather
+// than from a blank card. If target exceeds what's reachable from this
+// point, it's silently capped to the best achievable floor.
+//
+// Assumption worth flagging: the full ticket budget is treated as still
+// available for whatever remains. In the real game, tickets are tied to
+// specific level-up milestones, so if you've already leveled past one
+// of those points without using its ticket, this will read slightly
+// optimistic. There's no way to know that from points alone.
+function solveTarget(bases, currentDev, typeInfo, target){
+  var alreadyUsed = sum(currentDev);
+  var remainingPool = Math.max(0, typeInfo.pool - alreadyUsed);
+
+  var currentTotals = {};
+  CATS.forEach(function(c){ currentTotals[c] = (bases[c]||0) + (currentDev[c]||0); });
+
+  var ceilFromHere = waterFillCeiling(currentTotals, remainingPool);
+  var achievable = Math.min(Math.round(target), ceilFromHere.floor);
+  var adjusted = achievable < Math.round(target);
+
+  var stillNeeded = {};
+  CATS.forEach(function(c){ stillNeeded[c] = Math.max(0, achievable - currentTotals[c]); });
+  var totalStillNeeded = sum(stillNeeded);
+  var spare = remainingPool - totalStillNeeded;
+
+  var diff = difficultyFor(stillNeeded, { pool: remainingPool, ticketPoints: typeInfo.ticketPoints }, typeInfo.practicalCap);
+
+  return {
+    target: target, achievable: achievable, adjusted: adjusted,
+    alreadyUsed: alreadyUsed, remainingPool: remainingPool,
+    currentTotals: currentTotals, stillNeeded: stillNeeded,
+    totalStillNeeded: totalStillNeeded, spare: spare,
+    difficulty: diff
+  };
+}
+
+/* ---------- rendering ---------- */
+var $ = function(id){ return document.getElementById(id); };
+
+// Escape text before it goes into innerHTML (build names can come from
+// an imported file, so they're never trusted as markup).
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(ch){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch];
+  });
+}
+
+function buildTable(){
+  var tb = $("tbody");
+  tb.innerHTML = "";
+
+  INPUT_ROWS.forEach(function(r){
+    var tr = document.createElement("tr");
+    tr.className = "input-row";
+    tr.innerHTML = "<th>" + r.label + "</th>";
+    CATS.forEach(function(c){
+      var td = document.createElement("td");
+      var inp = document.createElement("input");
+      inp.type = "number"; inp.className = "num"; inp.value = build[r.key][c];
+      inp.setAttribute("aria-label", r.label + " " + c);
+      inp.addEventListener("input", function(){
+        build[r.key][c] = Number(inp.value) || 0;
+        render();
+      });
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+    var tot = document.createElement("td");
+    tot.className = "total-cell"; tot.id = "tot-" + r.key;
+    tr.appendChild(tot);
+    tb.appendChild(tr);
+  });
+
+  [["set","Set Deck"],["special","Special"],["sig","Sig"],["bd","Black Diamond"]].forEach(function(p){
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<th>" + p[1] + "</th>" +
+      CATS.map(function(c){ return '<td><span class="val locked" id="v-'+p[0]+'-'+c+'">0</span></td>'; }).join("") +
+      '<td class="total-cell" id="tot-'+p[0]+'">0</td>';
+    tb.appendChild(tr);
+  });
+
+  [["normal","Normal Lineup Stat","result"],
+   ["chem","With chemistry","result chem"],
+   ["lst","LST","result lst"]].forEach(function(p){
+    var tr = document.createElement("tr");
+    tr.className = p[2];
+    tr.innerHTML = "<th>" + p[1] + "</th>" +
+      CATS.map(function(c){ return '<td><span class="val" id="v-'+p[0]+'-'+c+'">0</span></td>'; }).join("") +
+      '<td class="total-cell" id="tot-'+p[0]+'">0</td>';
+    tb.appendChild(tr);
+  });
+}
+
+function buildStacks(){
+  var host = $("stacks");
+  host.innerHTML = "";
+  CATS.forEach(function(c, i){
+    var row = document.createElement("div");
+    row.className = "stack-row";
+    row.innerHTML =
+      '<div class="stack-lab">' + CAT_LABELS[i] + '</div>' +
+      '<div class="bar" id="bar-' + c + '"></div>' +
+      '<div class="stack-val" id="barval-' + c + '">0</div>';
+    host.appendChild(row);
+  });
+
+  var lg = $("legend");
+  lg.innerHTML = SEGMENTS.map(function(s){
+    return '<div class="key"><span class="swatch" style="background:var(' + s.css + ')"></span>' + s.label + '</div>';
+  }).join("");
+}
+
+function render(){
+  var r = compute(build);
+
+  INPUT_ROWS.forEach(function(row){
+    var v = row.agg === "avg" ? avg(build[row.key]) : sum(build[row.key]);
+    $("tot-" + row.key).textContent = v;
+  });
+
+  ["set","special","sig","bd"].forEach(function(k){
+    CATS.forEach(function(c){ $("v-" + k + "-" + c).textContent = r.parts[k][c]; });
+    $("tot-" + k).textContent = sum(r.parts[k]);
+  });
+
+  CATS.forEach(function(c){
+    $("v-normal-" + c).textContent = r.normal[c];
+    $("v-chem-" + c).textContent   = r.chem[c];
+    $("v-lst-" + c).textContent    = r.lst[c];
+  });
+  $("tot-normal").textContent = r.normalAvg;
+  $("tot-chem").textContent   = avg(r.chem);
+  $("tot-lst").textContent    = r.lstMin;
+
+  // special explainer
+  var names = r.special.order.map(function(c){ return CAT_LABELS[CATS.indexOf(c)]; });
+  $("specialNote").textContent =
+    "Special training follows your development spread: " +
+    names[0] + " +12, " + names[1] + " +10, " + names[2] + " +4. " +
+    "Equal development is broken by the higher base stat. " +
+    "LST Total is the lowest of the five category totals (Basic + GI + Development).";
+
+  // stacks
+  var max = Math.max.apply(null, CATS.map(function(c){ return r.normal[c]; })) || 1;
+  CATS.forEach(function(c){
+    var bar = $("bar-" + c);
+    bar.innerHTML = SEGMENTS.map(function(s){
+      var v = r.parts[s.key][c] || 0;
+      if (!v) return "";
+      return '<div class="seg" title="' + s.label + ' ' + v + '" style="width:' +
+             (v / max * 100) + '%;background:var(' + s.css + ')"></div>';
+    }).join("");
+    $("barval-" + c).textContent = r.normal[c];
+  });
+
+  renderCompare();
+}
+
+/* ---------- compare ---------- */
+function refreshSavedList(){
+  var sel = $("fCompare");
+  var current = sel.value;
+  var names = Object.keys(Store.all()).sort();
+  sel.innerHTML = '<option value="">Pick a saved build…</option>' +
+    names.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join("");
+  if (names.indexOf(current) > -1) sel.value = current;
+}
+
+function renderCompare(){
+  var out = $("cmpOut");
+  var name = $("fCompare").value;
+  if (!name){
+    out.innerHTML = '<div class="empty">Pick a saved build to see it next to the one you\'re working on.</div>';
+    return;
+  }
+  var saved = Store.get(name);
+  if (!saved){
+    out.innerHTML = '<div class="empty">That build is no longer saved.</div>';
+    return;
+  }
+
+  var a = compute(build), bC = compute(saved);
+  var cells = [];
+  cells.push('<div class="cmp-cell hd"><div class="cmp-lab">&nbsp;</div></div>');
+  CAT_LABELS.forEach(function(l){ cells.push('<div class="cmp-cell hd"><div class="cmp-lab">' + l + '</div></div>'); });
+
+  function rowOf(label, vals){
+    var r = ['<div class="cmp-cell"><div class="cmp-lab">' + label + '</div></div>'];
+    CATS.forEach(function(c){
+      r.push('<div class="cmp-cell"><div class="cmp-num">' + vals[c] + '</div></div>');
+    });
+    return r;
+  }
+  cells = cells
+    .concat(rowOf(esc(build.name || "Working"), a.normal))
+    .concat(rowOf(esc(name), bC.normal));
+
+  var d = ['<div class="cmp-cell"><div class="cmp-lab">Difference</div></div>'];
+  CATS.forEach(function(c){
+    var diff = a.normal[c] - bC.normal[c];
+    var cls = diff > 0 ? "up" : (diff < 0 ? "down" : "flat");
+    var txt = diff > 0 ? "+" + diff : String(diff);
+    d.push('<div class="cmp-cell"><div class="cmp-delta ' + cls + '">' + txt + '</div></div>');
+  });
+  cells = cells.concat(d);
+
+  var totalDiff = Math.round((a.normalAvg - bC.normalAvg) * 100) / 100;
+  var tCls = totalDiff > 0 ? "up" : (totalDiff < 0 ? "down" : "flat");
+
+  out.innerHTML =
+    '<div class="cmp-grid">' + cells.join("") + '</div>' +
+    '<div class="note">Average stat — ' + esc(build.name || "working build") + ' ' + a.normalAvg +
+    ' vs ' + esc(name) + ' ' + bC.normalAvg +
+    ' <span class="' + tCls + '">(' + (totalDiff > 0 ? "+" : "") + totalDiff + ')</span>. ' +
+    'LST — ' + a.lstMin + ' vs ' + bC.lstMin + '.</div>';
+}
+
+/* ---------- actions ---------- */
+function toast(msg){
+  var t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(function(){ t.classList.remove("show"); }, 1900);
+}
+
+function syncMetaToForm(){
+  $("fName").value  = build.name;
+  $("fType").value  = build.type;
+  $("fChem").value  = String(build.chem);
+  $("fNotes").value = build.notes;
+}
+
+function bind(){
+  $("fName").addEventListener("input", function(){ build.name = this.value; renderCompare(); });
+  $("fNotes").addEventListener("input", function(){ build.notes = this.value; });
+  $("fType").addEventListener("change", function(){ build.type = this.value; render(); });
+  $("fChem").addEventListener("change", function(){ build.chem = Number(this.value); render(); });
+  $("fCompare").addEventListener("change", renderCompare);
+
+  $("btnSave").addEventListener("click", function(){
+    var n = (build.name || "").trim();
+    if (!n){ toast("Name the card first"); $("fName").focus(); return; }
+    if (Store.get(n) && !confirm('"' + n + '" is already saved. Overwrite it?')) return;
+    Store.put(n, JSON.parse(JSON.stringify(build)));
+    refreshSavedList();
+    if (typeof refreshT5SourceList === "function") refreshT5SourceList();
+    renderCompare();
+    toast("Saved " + n);
+  });
+
+  $("btnLoad").addEventListener("click", function(){
+    var n = $("fCompare").value;
+    if (!n){ toast("Pick a build first"); return; }
+    build = JSON.parse(JSON.stringify(Store.get(n)));
+    syncMetaToForm();
+    buildTable();
+    render();
+    toast("Loaded " + n);
+  });
+
+  $("btnDelete").addEventListener("click", function(){
+    var n = $("fCompare").value;
+    if (!n){ toast("Pick a build first"); return; }
+    if (!confirm('Delete "' + n + '"? This can\'t be undone.')) return;
+    Store.drop(n);
+    $("fCompare").value = "";
+    refreshSavedList();
+    renderCompare();
+    toast("Deleted " + n);
+  });
+
+  $("btnClear").addEventListener("click", function(){
+    build = blankBuild();
+    syncMetaToForm();
+    buildTable();
+    render();
+    $("fName").focus();
+  });
+
+  $("btnExport").addEventListener("click", exportBuilds);
+  $("btnImport").addEventListener("click", function(){ $("fileImport").click(); });
+  $("fileImport").addEventListener("change", function(){
+    var f = this.files && this.files[0];
+    var input = this;
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024){ toast("That file is too large to be a build backup"); input.value = ""; return; }
+    var reader = new FileReader();
+    reader.onload = function(){ importBuildsFromText(String(reader.result || "")); input.value = ""; };
+    reader.onerror = function(){ toast("Couldn't read that file"); input.value = ""; };
+    reader.readAsText(f);
+  });
+}
+
+/* ---------- JSON backup: export / import ---------- */
+function exportBuilds(){
+  var all = Store.all();
+  var names = Object.keys(all);
+  if (!names.length){ toast("No saved builds to export"); return; }
+  var payload = {
+    app: "mlb9-lineup-calculator",
+    version: 1,
+    exported: new Date().toISOString(),
+    builds: all
+  };
+  var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "mlb9-builds-" + new Date().toISOString().slice(0, 10) + ".json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  toast("Exported " + names.length + " build" + (names.length === 1 ? "" : "s"));
+}
+
+// Rebuilds a clean build object from untrusted JSON: only known fields,
+// numbers within a sane range, type/chem from the allowed lists.
+function sanitizeBuild(raw, key){
+  if (!raw || typeof raw !== "object") return null;
+  var nm = String(raw.name != null && raw.name !== "" ? raw.name : (key || "")).trim().slice(0, 60);
+  if (!nm || nm === "__proto__" || nm === "constructor" || nm === "prototype") return null;
+  var b = blankBuild();
+  b.name = nm;
+  b.type = Object.prototype.hasOwnProperty.call(TYPES, raw.type) ? raw.type : "Supreme";
+  var chem = Number(raw.chem);
+  b.chem = (chem === 7 || chem === 8) ? chem : 0;
+  b.notes = String(raw.notes == null ? "" : raw.notes).slice(0, 200);
+  INPUT_ROWS.forEach(function(r){
+    CATS.forEach(function(c){
+      var v = raw[r.key] && typeof raw[r.key] === "object" ? Number(raw[r.key][c]) : 0;
+      if (!isFinite(v)) v = 0;
+      b[r.key][c] = Math.max(-1000, Math.min(1000, v));
+    });
+  });
+  return b;
+}
+
+function importBuildsFromText(text){
+  var data;
+  try { data = JSON.parse(text); }
+  catch (e){ toast("That isn't a valid JSON file"); return; }
+
+  var src = (data && !Array.isArray(data) && typeof data === "object" && data.builds) ? data.builds : data;
+  var pairs = [];
+  if (Array.isArray(src)){
+    src.forEach(function(x){ pairs.push([null, x]); });
+  } else if (src && typeof src === "object"){
+    if (src.basic && src.dev) pairs.push([null, src]);          // a single build
+    else Object.keys(src).forEach(function(k){ pairs.push([k, src[k]]); });
+  }
+
+  var good = [];
+  pairs.forEach(function(p){
+    var b = sanitizeBuild(p[1], p[0]);
+    if (b) good.push(b);
+  });
+  if (!good.length){ toast("No valid builds found in that file"); return; }
+
+  var existing = Store.all();
+  var clashes = good.filter(function(b){ return Object.prototype.hasOwnProperty.call(existing, b.name); }).length;
+  var overwrite = true;
+  if (clashes > 0){
+    overwrite = confirm(clashes + " build" + (clashes === 1 ? " has" : "s have") + " the same name as one you already have.\n\n" +
+      "OK = overwrite those with the imported versions\nCancel = keep yours and skip those");
+  }
+
+  var added = 0;
+  good.forEach(function(b){
+    var clash = Object.prototype.hasOwnProperty.call(existing, b.name);
+    if (clash && !overwrite) return;
+    Store.put(b.name, b);
+    added++;
+  });
+
+  refreshSavedList();
+  if (typeof refreshT5SourceList === "function") refreshT5SourceList();
+  renderCompare();
+  toast("Imported " + added + " of " + good.length + " build" + (good.length === 1 ? "" : "s"));
+}
+
+/* ============================================================
+   TAB SWITCHING
+   ============================================================ */
+function switchTab(name){
+  ["normal","5t"].forEach(function(t){
+    $("tab-" + t).classList.toggle("active", t === name);
+    $("tabbtn-" + t).classList.toggle("active", t === name);
+  });
+  $("tabActions").style.display = (name === "normal") ? "flex" : "none";
+  if (name === "5t") render5t();
+}
+
+/* ============================================================
+   5T TAB
+   ============================================================ */
+var t5 = {
+  maxLevel: 30,   // Supreme only: 30 or 35 (Sig/Legend are always 20)
+  name: build.name, type: build.type,
+  basic: JSON.parse(JSON.stringify(build.basic)),
+  gi: JSON.parse(JSON.stringify(build.gi)),
+  dev: JSON.parse(JSON.stringify(build.dev))
+};
+
+function t5Bases(){
+  var b = {};
+  CATS.forEach(function(c){ b[c] = (t5.basic[c]||0) + (t5.gi[c]||0); });
+  return b;
+}
+
+function t5LST(){
+  var lst = {};
+  CATS.forEach(function(c){ lst[c] = (t5.basic[c]||0) + (t5.gi[c]||0) + (t5.dev[c]||0); });
+  return lst;
+}
+
+function buildT5Table(){
+  var tb = $("t5body");
+  tb.innerHTML = "";
+
+  var editableRows = [
+    { key:"basic", label:"Basic", agg:"avg" },
+    { key:"gi",    label:"GI",    agg:"sum" },
+    { key:"dev",   label:"Development", agg:"sum" }
+  ];
+
+  editableRows.forEach(function(r){
+    var tr = document.createElement("tr");
+    tr.className = "input-row";
+    tr.innerHTML = "<th>" + r.label + "</th>";
+    CATS.forEach(function(c){
+      var td = document.createElement("td");
+      var inp = document.createElement("input");
+      inp.type = "number"; inp.step = "1"; inp.className = "num";
+      inp.value = Math.round(t5[r.key][c] || 0);
+      inp.setAttribute("aria-label", r.label + " " + c);
+      inp.addEventListener("input", function(){
+        var whole = Math.round(Number(inp.value)) || 0;
+        t5[r.key][c] = whole;
+        if (String(whole) !== inp.value) inp.value = whole;
+        render5t();
+      });
+      td.appendChild(inp);
+      tr.appendChild(td);
+    });
+    var tot = document.createElement("td");
+    tot.className = "total-cell"; tot.id = "t5tot-" + r.key;
+    tr.appendChild(tot);
+    tb.appendChild(tr);
+  });
+
+  var trLst = document.createElement("tr");
+  trLst.className = "result lst";
+  trLst.innerHTML = "<th>LST</th>" +
+    CATS.map(function(c){ return '<td><span class="val" id="t5v-lst-'+c+'">0</span></td>'; }).join("") +
+    '<td class="total-cell" id="t5tot-lst">0</td>';
+  tb.appendChild(trLst);
+}
+
+function renderLockGrid(hostId, values){
+  var host = $(hostId);
+  host.innerHTML = CATS.map(function(c,i){
+    return '<div class="lockcell"><div class="lc-lab">' + CAT_LABELS[i] + '</div><div class="lc-val">' + values[c] + '</div></div>';
+  }).join("");
+}
+
+// Effective max level for the 5T tab: Sig/Legend are always 20, Supreme is 30 or 35.
+function t5Level(){
+  if (t5.type !== "Supreme") return 20;
+  return t5.maxLevel === 35 ? 35 : 30;
+}
+
+// Pool / ticket / cap rules for the current type + level.
+function t5TypeInfo(){
+  if (t5.type === "Supreme" && t5Level() === 35) return SUPREME_L35;
+  return TYPE_DEV[t5.type] || TYPE_DEV.Supreme;
+}
+
+function syncT5LevelControl(){
+  var sel = $("t5LevelInput");
+  var isSupreme = (t5.type === "Supreme");
+  var mode = isSupreme ? "supreme" : "fixed";
+  if (sel.getAttribute("data-mode") !== mode){
+    sel.setAttribute("data-mode", mode);
+    sel.innerHTML = isSupreme
+      ? '<option value="30">30 (87 pts)</option><option value="35">35 (102 pts)</option>'
+      : '<option value="20">20 (57 pts)</option>';
+  }
+  sel.disabled = !isSupreme;
+  sel.value = String(t5Level());
+}
+
+function render5tNote(typeInfo){
+  var lvl = t5Level();
+  var resets;
+  if (t5.type === "Supreme" && lvl === 35){
+    resets = "Supreme lets you reset to level 1, 20 or 30 (resetting to 30 keeps all 5 earlier tickets and only re-rolls 30→35)";
+  } else if (t5.type === "Supreme"){
+    resets = "Supreme lets you reset to level 1 or 20 (resetting to 20 keeps your first 3 tickets)";
+  } else {
+    resets = "Sig/Legend resets to level 1";
+  }
+  $("t5DiffNote").textContent =
+    "Tickets cover the required points first wherever they help most; whatever's left has to come from random level-ups. " +
+    "This is judged against the practical single-stat cap (~" + typeInfo.practicalCap + " at level " + lvl + ") — " +
+    "roughly the most a stat realistically gets from random level-ups even across many resets. " +
+    resets + ", so you're rarely stuck with one blind roll — a build gets genuinely hard when one stat needs close to " +
+    "or past that ceiling, or when two stats are both pushing hard in the same reroll batch, not just because the raw point count looks big.";
+}
+
+function render5t(){
+  if (!$("t5body").children.length) buildT5Table();
+
+  var typeInfo = t5TypeInfo();
+  $("t5Pool").textContent = typeInfo.pool + " pts (" + typeInfo.ticketPoints + " via tickets)";
+  syncT5LevelControl();
+  render5tNote(typeInfo);
+
+  ["basic","gi","dev"].forEach(function(k){
+    $("t5tot-" + k).textContent = k === "basic" ? avg(t5.basic) : sum(t5[k]);
+  });
+
+  var lst = t5LST();
+  CATS.forEach(function(c){ $("t5v-lst-" + c).textContent = lst[c]; });
+  $("t5tot-lst").textContent = Math.min.apply(null, CATS.map(function(c){ return lst[c]; }));
+
+  var bases = t5Bases();
+  var trueCeil = trueCeilingFloorOnly(bases, typeInfo.pool);
+  var realCeil = realisticCeiling(bases, typeInfo);
+
+  $("ceilTrueFloor").textContent = trueCeil.floor;
+  var trueVals = {};
+  CATS.forEach(function(c){ trueVals[c] = (bases[c]||0) + trueCeil.dev[c]; });
+  renderLockGrid("ceilTrueGrid", trueVals);
+  $("ceilTrueExtra").textContent = trueCeil.extra > 0
+    ? trueCeil.extra + " extra point" + (trueCeil.extra === 1 ? "" : "s") + " beyond this floor — doesn't move the ceiling, free to place wherever you want."
+    : "This uses the entire pool — no extra points beyond the floor.";
+
+  $("ceilRealFloor").textContent = realCeil.floor;
+  renderLockGrid("ceilRealGrid", realCeil.values);
+  $("ceilRealExtra").textContent = realCeil.ticketExtra > 0
+    ? realCeil.ticketExtra + " extra ticket point" + (realCeil.ticketExtra === 1 ? "" : "s") + " beyond this floor — free to place wherever you want."
+    : "This uses every ticket point — no extras beyond the floor.";
+
+  var curLstMin = Math.min.apply(null, CATS.map(function(c){ return lst[c]; }));
+  var skill = fiveToolLv8(curLstMin);
+  $("t5SkillLST").textContent = curLstMin;
+  $("t5SkillPts").textContent = skill.pts == null ? "—" : ("+" + skill.pts);
+  $("t5SkillNote").textContent = skill.pts == null
+    ? "LST " + curLstMin + " is below the charted range (chart starts at 78)."
+    : (skill.approx
+        ? "Based on your current Basic + GI + Development. LST " + curLstMin + " isn't directly listed — using the nearest listed value at or below it, so treat this as approximate."
+        : "Based on your current Basic + GI + Development.");
+
+  solveAndRenderTarget();
+}
+
+// Takes whatever the solver last computed (already entered + additional
+// needed) and writes it straight into the editable Development row —
+// accepts the solved plan as your working numbers.
+function pushTargetToDev(){
+  var typeInfo = t5TypeInfo();
+  var bases = t5Bases();
+  var targetRaw = Number($("t5Target").value);
+  var target = isNaN(targetRaw) ? 110 : Math.round(targetRaw);
+  var res = solveTarget(bases, t5.dev, typeInfo, target);
+
+  CATS.forEach(function(c){
+    t5.dev[c] = (t5.dev[c] || 0) + res.stillNeeded[c];
+  });
+
+  buildT5Table();
+  render5t();
+  toast("Pushed target allocation into Development");
+}
+
+function resetT5Dev(){
+  CATS.forEach(function(c){ t5.dev[c] = 0; });
+  buildT5Table();
+  render5t();
+  toast("Development reset to 0");
+}
+
+function solveAndRenderTarget(){
+  var typeInfo = t5TypeInfo();
+  var bases = t5Bases();
+  var targetRaw = Number($("t5Target").value);
+  var target = isNaN(targetRaw) ? 110 : Math.round(targetRaw);
+  var res = solveTarget(bases, t5.dev, typeInfo, target);
+
+  var noteEl = $("t5AdjustedNote");
+  if (res.adjusted){
+    noteEl.style.display = "inline";
+    noteEl.textContent = "Target " + target + " isn't reachable from here — showing the best achievable floor of " + res.achievable + " instead.";
+  } else {
+    noteEl.style.display = "none";
+  }
+
+  var tb = $("t5solveBody");
+  tb.innerHTML = "";
+
+  var trEntered = document.createElement("tr");
+  trEntered.innerHTML = "<th>Already entered</th>" +
+    CATS.map(function(c){ return '<td><span class="val">' + (t5.dev[c]||0) + '</span></td>'; }).join("") +
+    '<td class="total-cell">' + res.alreadyUsed + '</td>';
+  tb.appendChild(trEntered);
+
+  var trNeed = document.createElement("tr");
+  trNeed.className = "result";
+  trNeed.innerHTML = "<th>Additional needed</th>" +
+    CATS.map(function(c){ return '<td><span class="val">' + res.stillNeeded[c] + '</span></td>'; }).join("") +
+    '<td class="total-cell">' + res.totalStillNeeded + '</td>';
+  tb.appendChild(trNeed);
+
+  var floorVals = {};
+  CATS.forEach(function(c){ floorVals[c] = res.currentTotals[c] + res.stillNeeded[c]; });
+  var trFloor = document.createElement("tr");
+  trFloor.innerHTML = "<th>Resulting LST</th>" +
+    CATS.map(function(c){ return '<td><span class="val">' + floorVals[c] + '</span></td>'; }).join("") +
+    '<td class="total-cell">' + Math.min.apply(null, CATS.map(function(c){ return floorVals[c]; })) + '</td>';
+  tb.appendChild(trFloor);
+
+  var spareTxt = res.spare > 0
+    ? res.spare + " spare point" + (res.spare === 1 ? "" : "s") + " left in your remaining pool (" + (typeInfo.pool - res.alreadyUsed) + " left to earn) after hitting this target — free to place wherever adds the most value beyond the floor."
+    : "This target uses every point you have left to earn (" + (typeInfo.pool - res.alreadyUsed) + " remaining) — no spare points.";
+  $("t5SpareNote").textContent = spareTxt;
+
+  var targetSkill = fiveToolLv8(res.achievable);
+  $("t5TargetSkillNote").textContent = targetSkill.pts == null
+    ? "At LST " + res.achievable + ", Level 8 skill points aren't in the charted range."
+    : "At LST " + res.achievable + ", Level 8 adds +" + targetSkill.pts + " to each skill" + (targetSkill.approx ? " (approximate — nearest listed value)." : ".");
+
+  var badge = $("t5DiffBadge");
+  var scoreEl = $("t5DiffScore");
+  if (res.difficulty.bottleneck === null){
+    badge.textContent = "Already there";
+    badge.className = "diff-badge diff-comfortable";
+    scoreEl.textContent = "Score: 0/10 — Easy";
+  } else {
+    var capPct = Math.round(res.difficulty.maxRatio * 100);
+    badge.textContent = res.difficulty.label + " (" + capPct + "% of practical single-stat cap on " + CAT_LABELS[CATS.indexOf(res.difficulty.maxCat)] + ")";
+    badge.className = "diff-badge " + res.difficulty.cls;
+    scoreEl.textContent = "Score: " + res.difficulty.score + "/10 — " + res.difficulty.scoreBand;
+  }
+
+  var db = $("t5diffBody");
+  db.innerHTML = "";
+  var trTicket = document.createElement("tr");
+  trTicket.innerHTML = "<th>From tickets</th>" +
+    CATS.map(function(c){ return '<td><span class="val">' + res.difficulty.ticketAlloc[c] + '</span></td>'; }).join("");
+  db.appendChild(trTicket);
+
+  var trRandom = document.createElement("tr");
+  trRandom.className = "result";
+  trRandom.innerHTML = "<th>From random</th>" +
+    CATS.map(function(c){
+      var need = res.difficulty.randomNeed[c];
+      var over = res.difficulty.cap > 0 && need > res.difficulty.cap;
+      var style = over ? ' style="color:var(--neg)"' : "";
+      return '<td><span class="val"' + style + '>' + need + '</span></td>';
+    }).join("");
+  db.appendChild(trRandom);
+
+  var trCap = document.createElement("tr");
+  trCap.innerHTML = "<th>% of practical cap</th>" +
+    CATS.map(function(c){
+      var pct = res.difficulty.cap > 0 ? Math.round((res.difficulty.randomNeed[c] / res.difficulty.cap) * 100) : 0;
+      return '<td><span class="val">' + pct + '%</span></td>';
+    }).join("");
+  db.appendChild(trCap);
+
+  var trJoint = document.createElement("tr");
+  trJoint.innerHTML = "<th>Single-roll odds</th>" +
+    '<td colspan="5" style="text-align:left;padding-left:10px;color:var(--muted)">' +
+    formatPct(res.difficulty.jointProb) + ' if you had to nail every stat in one attempt with no resets — not the real read, shown for reference only</td>';
+  db.appendChild(trJoint);
+}
+
+// Formats a probability for display, giving small values enough
+// precision to still be readable (e.g. "Near Impossible" builds would
+// otherwise all just show "0.0%").
+function formatPct(p){
+  var pct = p * 100;
+  if (pct <= 0) return "0%";
+  if (pct < 0.01) return "<0.01%";
+  if (pct < 1) return (Math.round(pct * 100) / 100) + "%";
+  return (Math.round(pct * 10) / 10) + "%";
+}
+
+function syncT5MetaToForm(){
+  $("t5NameInput").value = t5.name || "";
+  $("t5TypeInput").value = t5.type || "Supreme";
+}
+
+function refreshT5SourceList(){
+  var sel = $("t5Source");
+  var current = sel.value;
+  var names = Object.keys(Store.all()).sort();
+  sel.innerHTML = '<option value="">Pick a saved build…</option>' +
+    names.map(function(n){ return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join("");
+  if (names.indexOf(current) > -1) sel.value = current;
+}
+
+function bind5t(){
+  $("tabbtn-normal").addEventListener("click", function(){ switchTab("normal"); });
+  $("tabbtn-5t").addEventListener("click", function(){ switchTab("5t"); });
+
+  $("t5NameInput").addEventListener("input", function(){ t5.name = this.value; });
+  $("t5TypeInput").addEventListener("change", function(){ t5.type = this.value; render5t(); });
+  $("t5LevelInput").addEventListener("change", function(){
+    t5.maxLevel = Number(this.value) === 35 ? 35 : 30;
+    render5t();
+  });
+
+  $("t5Load").addEventListener("click", function(){
+    var n = $("t5Source").value;
+    if (!n){ toast("Pick a saved build first"); return; }
+    var source = Store.get(n);
+    if (!source){ toast("That build is no longer saved"); return; }
+    t5 = {
+      maxLevel: t5.maxLevel,
+      name: source.name, type: source.type,
+      basic: JSON.parse(JSON.stringify(source.basic)),
+      gi: JSON.parse(JSON.stringify(source.gi)),
+      dev: JSON.parse(JSON.stringify(source.dev))
+    };
+    buildT5Table();
+    syncT5MetaToForm();
+    render5t();
+    toast("Loaded " + (source.name || "build"));
+  });
+
+  $("t5Solve").addEventListener("click", solveAndRenderTarget);
+  $("t5Target").addEventListener("keydown", function(e){ if (e.key === "Enter") solveAndRenderTarget(); });
+  $("t5PushDev").addEventListener("click", pushTargetToDev);
+  $("t5ResetDev").addEventListener("click", resetT5Dev);
+}
+
+buildTable();
+buildStacks();
+syncMetaToForm();
+bind();
+refreshSavedList();
+render();
+
+buildT5Table();
+bind5t();
+syncT5MetaToForm();
+refreshT5SourceList();
+render5t();
+</script>
+</body>
+</html>
