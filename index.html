@@ -27,6 +27,7 @@
     --seg-sig:#C9578A;
     --seg-bd:#6FA3C4;
     --seg-trainer:#9BB33F;
+    --seg-cb:#D9D36A;
     --r:3px;
   }
   *{box-sizing:border-box}
@@ -242,11 +243,11 @@
   </header>
 
   <div class="tabnav">
-    <button class="tabbtn active" id="tabbtn-normal" data-tab="normal">Normal Lineup</button>
-    <button class="tabbtn" id="tabbtn-5t" data-tab="5t">5T Calculator</button>
+    <button class="tabbtn active" id="tabbtn-5t" data-tab="5t">5T Calculator</button>
+    <button class="tabbtn" id="tabbtn-normal" data-tab="normal">Normal Lineup</button>
   </div>
 
-  <div id="tab-normal" class="tabpanel active">
+  <div id="tab-normal" class="tabpanel">
 
   <!-- CARD META -->
   <section class="panel">
@@ -276,6 +277,22 @@
         <label for="fNotes">Notes</label>
         <input type="text" id="fNotes" placeholder="HH/Pred/Char">
       </div>
+      <div>
+        <label for="fCB">Ceiling break (CB)</label>
+        <select id="fCB"><option value="0">Off</option><option value="1">On</option></select>
+      </div>
+      <div>
+        <label for="fCB3">CB +3 stat</label>
+        <select id="fCB3">
+          <option value="con">Con/Loc</option><option value="pow">Pow/Vel</option><option value="eye">Eye/Sta</option><option value="spd">Spd/Fb</option><option value="fld">Fld/Brk</option>
+        </select>
+      </div>
+      <div>
+        <label for="fCB2">CB +2 stat</label>
+        <select id="fCB2">
+          <option value="con">Con/Loc</option><option value="pow" selected>Pow/Vel</option><option value="eye">Eye/Sta</option><option value="spd">Spd/Fb</option><option value="fld">Fld/Brk</option>
+        </select>
+      </div>
     </div>
   </section>
 
@@ -298,6 +315,7 @@
       </table>
     </div>
     <div class="note" id="specialNote"></div>
+    <div class="note warn" id="bsaNote"></div>
   </section>
 
   <!-- SIGNATURE VISUAL -->
@@ -333,7 +351,7 @@
 
   </div>
 
-  <div id="tab-5t" class="tabpanel">
+  <div id="tab-5t" class="tabpanel active">
 
   <!-- SOURCE CARD -->
   <section class="panel">
@@ -369,6 +387,25 @@
         <div class="lockcell"><div class="lc-val" id="t5Pool">—</div></div>
       </div>
     </div>
+    <div class="meta" style="margin-top:12px">
+      <div>
+        <label for="t5CB">Ceiling break (CB)</label>
+        <select id="t5CB"><option value="0">Off</option><option value="1">On</option></select>
+      </div>
+      <div>
+        <label for="t5CB3">CB +3 stat</label>
+        <select id="t5CB3">
+          <option value="con">Con/Loc</option><option value="pow">Pow/Vel</option><option value="eye">Eye/Sta</option><option value="spd">Spd/Fb</option><option value="fld">Fld/Brk</option>
+        </select>
+      </div>
+      <div>
+        <label for="t5CB2">CB +2 stat</label>
+        <select id="t5CB2">
+          <option value="con">Con/Loc</option><option value="pow" selected>Pow/Vel</option><option value="eye">Eye/Sta</option><option value="spd">Spd/Fb</option><option value="fld">Fld/Brk</option>
+        </select>
+      </div>
+    </div>
+    <div class="note">Level 35 is only available on a Supreme with ceiling break turned on.</div>
   </section>
 
   <!-- BASIC / GI (locked) + DEV (editable) -->
@@ -377,7 +414,7 @@
       <span>Build</span>
       <button id="t5ResetDev" class="ghost" style="padding:4px 10px;font-size:11px">Reset Development to 0</button>
     </div>
-    <div class="note" style="margin-top:-6px;margin-bottom:10px">All three rows are editable — loading a card just fills in a starting point.</div>
+    <div class="note" style="margin-top:-6px;margin-bottom:10px">Basic, GI, BSA and Development are editable — loading a card just fills in a starting point. BSA = base stat adjust: move up to 5 points from one stat to another (net zero).</div>
     <div class="scroll">
       <table>
         <thead>
@@ -390,7 +427,8 @@
         <tbody id="t5body"></tbody>
       </table>
     </div>
-    <div class="note">LST Total = the lowest of the five (Basic + GI + Development) category totals.</div>
+    <div class="note">LST Total = the lowest of the five (Basic + GI + BSA + Ceiling Break + Development) category totals.</div>
+    <div class="note warn" id="t5BsaNote"></div>
   </section>
 
   <!-- 5T SKILL POINTS -->
@@ -490,7 +528,7 @@
   </div>
 
 </div>
-<div style="text-align:center;font-size:11px;color:var(--muted);padding:6px 0 28px" id="verLabel">v1.1 · Supreme level 35 · JSON backup</div>
+<div style="text-align:center;font-size:11px;color:var(--muted);padding:6px 0 28px" id="verLabel">v1.2 · BSA · Ceiling break · Level 35</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -501,7 +539,9 @@
                           + Special + Sig + Black Diamond + Trainer
      Set Deck / Black Diamond : from card Type
      Special : dev rank -> 1st +12, 2nd +10, 3rd +4, rest 0
-     LST     : Basic + GI + Development ; LST Total = lowest of the five
+     LST     : Basic + GI + BSA + Ceiling Break + Development ; LST Total = lowest of the five
+     BSA     : base stat adjust, two stats, each within +/-5, net zero
+     CB      : ceiling break, +3 to one stat and +2 to another; on a Supreme it unlocks level 35
      w/ Chem : Normal Lineup Stat + chem bonus (7 or 8)
 
    5T Calculator model:
@@ -540,6 +580,7 @@ var SUPREME_L35 = { pool: 102, ticketPoints: 18, practicalCap: 45 };
 var SEGMENTS = [
   { key:"basic",   label:"Basic",         css:"--seg-basic" },
   { key:"gi",      label:"GI",            css:"--seg-gi" },
+  { key:"cb",      label:"Ceiling Break", css:"--seg-cb" },
   { key:"dev",     label:"Development",   css:"--seg-dev" },
   { key:"set",     label:"Set Deck",      css:"--seg-set" },
   { key:"special", label:"Special",       css:"--seg-special" },
@@ -551,6 +592,7 @@ var SEGMENTS = [
 var INPUT_ROWS = [
   { key:"basic",   label:"Basic",       agg:"avg" },
   { key:"gi",      label:"GI",          agg:"sum" },
+  { key:"bsa",     label:"Base stat adj. (BSA)", agg:"sum" },
   { key:"dev",     label:"Development", agg:"sum" },
   { key:"trainer", label:"Trainer",     agg:"sum" }
 ];
@@ -588,7 +630,7 @@ var Store = (function(){
 
 /* ---------- state ---------- */
 function blankBuild(){
-  var b = { name:"", type:"Supreme", chem:0, notes:"" };
+  var b = { name:"", type:"Supreme", chem:0, notes:"", cb:{ on:false, p3:"con", p2:"pow" } };
   INPUT_ROWS.forEach(function(r){
     b[r.key] = { con:0, pow:0, eye:0, spd:0, fld:0 };
   });
@@ -597,6 +639,47 @@ function blankBuild(){
 
 // Blank on open — no example data, no name pre-filled
 var build = blankBuild();
+
+function zeroRow(){ return { con:0, pow:0, eye:0, spd:0, fld:0 }; }
+
+// Ceiling break: +3 to one base stat and +2 to a different one.
+function cbValues(cb){
+  var out = zeroRow();
+  if (cb && cb.on && cb.p3 !== cb.p2 && CATS.indexOf(cb.p3) > -1 && CATS.indexOf(cb.p2) > -1){
+    out[cb.p3] = 3;
+    out[cb.p2] = 2;
+  }
+  return out;
+}
+function cbCheck(cb){
+  if (cb && cb.on && cb.p3 === cb.p2){
+    return "Ceiling break: the +3 and +2 have to go to different stats (not applied until fixed).";
+  }
+  return "";
+}
+
+// Base stat adjust (BSA): exactly two stats move, each within +/-5, net zero.
+// Anything else is still calculated as entered but gets a warning.
+function bsaCheck(row){
+  row = row || zeroRow();
+  var moved = CATS.filter(function(c){ return (row[c] || 0) !== 0; });
+  if (!moved.length) return "";
+  var total = CATS.reduce(function(s, c){ return s + (row[c] || 0); }, 0);
+  var inRange = moved.every(function(c){ return Math.abs(row[c]) <= 5; });
+  if (moved.length !== 2 || total !== 0 || !inRange){
+    return "BSA should move exactly two stats by up to ±5 with a net of zero — right now " +
+      moved.length + " stat" + (moved.length === 1 ? "" : "s") + " changed, net " + (total > 0 ? "+" : "") + total + ".";
+  }
+  return "";
+}
+
+// Older saved builds predate BSA / CB; fill those in on a copy.
+function withDefaults(b){
+  var c = JSON.parse(JSON.stringify(b));
+  if (!c.bsa) c.bsa = zeroRow();
+  if (!c.cb) c.cb = { on:false, p3:"con", p2:"pow" };
+  return c;
+}
 
 /* ---------- math ---------- */
 function specialFor(dev, basic){
@@ -617,10 +700,15 @@ function specialFor(dev, basic){
 
 function compute(b){
   var t = TYPES[b.type] || TYPES.Supreme;
-  var sp = specialFor(b.dev, b.basic);
+  var bsa = b.bsa || zeroRow();
+  var cbv = cbValues(b.cb);
+  // Special-training tiebreak uses the adjusted base (Basic + BSA + CB).
+  var adjBase = {};
+  CATS.forEach(function(c){ adjBase[c] = (b.basic[c]||0) + (bsa[c]||0) + cbv[c]; });
+  var sp = specialFor(b.dev, adjBase);
 
   var parts = {
-    basic: b.basic, gi: b.gi, dev: b.dev, trainer: b.trainer,
+    basic: b.basic, gi: b.gi, dev: b.dev, trainer: b.trainer, cb: cbv,
     set: {}, bd: {}, sig: {}, special: sp.values
   };
   CATS.forEach(function(c){
@@ -631,13 +719,14 @@ function compute(b){
 
   var normal = {}, lst = {}, chem = {};
   CATS.forEach(function(c){
-    normal[c] = SEGMENTS.reduce(function(sum, s){ return sum + (parts[s.key][c] || 0); }, 0);
-    lst[c]    = (b.basic[c]||0) + (b.gi[c]||0) + (b.dev[c]||0);
+    normal[c] = SEGMENTS.reduce(function(sum, s){ return sum + (parts[s.key][c] || 0); }, 0) + (bsa[c] || 0);
+    lst[c]    = (b.basic[c]||0) + (b.gi[c]||0) + (bsa[c]||0) + cbv[c] + (b.dev[c]||0);
     chem[c]   = normal[c] + Number(b.chem || 0);
   });
 
   return {
     parts: parts,
+    bsa: bsa,
     special: sp,
     normal: normal,
     lst: lst,
@@ -983,9 +1072,16 @@ function buildTable(){
       var td = document.createElement("td");
       var inp = document.createElement("input");
       inp.type = "number"; inp.className = "num"; inp.value = build[r.key][c];
+      if (r.key === "bsa"){ inp.step = "1"; inp.min = "-5"; inp.max = "5"; }
       inp.setAttribute("aria-label", r.label + " " + c);
       inp.addEventListener("input", function(){
-        build[r.key][c] = Number(inp.value) || 0;
+        var raw = inp.value;
+        var v = raw === "" ? 0 : (Number(raw) || 0);
+        if (r.key === "bsa"){
+          v = Math.max(-5, Math.min(5, Math.round(v)));
+          if (raw !== "" && String(v) !== raw) inp.value = v;
+        }
+        build[r.key][c] = v;
         render();
       });
       td.appendChild(inp);
@@ -997,7 +1093,7 @@ function buildTable(){
     tb.appendChild(tr);
   });
 
-  [["set","Set Deck"],["special","Special"],["sig","Sig"],["bd","Black Diamond"]].forEach(function(p){
+  [["cb","Ceiling Break"],["set","Set Deck"],["special","Special"],["sig","Sig"],["bd","Black Diamond"]].forEach(function(p){
     var tr = document.createElement("tr");
     tr.innerHTML = "<th>" + p[1] + "</th>" +
       CATS.map(function(c){ return '<td><span class="val locked" id="v-'+p[0]+'-'+c+'">0</span></td>'; }).join("") +
@@ -1044,7 +1140,7 @@ function render(){
     $("tot-" + row.key).textContent = v;
   });
 
-  ["set","special","sig","bd"].forEach(function(k){
+  ["cb","set","special","sig","bd"].forEach(function(k){
     CATS.forEach(function(c){ $("v-" + k + "-" + c).textContent = r.parts[k][c]; });
     $("tot-" + k).textContent = sum(r.parts[k]);
   });
@@ -1064,7 +1160,8 @@ function render(){
     "Special training follows your development spread: " +
     names[0] + " +12, " + names[1] + " +10, " + names[2] + " +4. " +
     "Equal development is broken by the higher base stat. " +
-    "LST Total is the lowest of the five category totals (Basic + GI + Development).";
+    "LST Total is the lowest of the five category totals (Basic + GI + BSA + Ceiling Break + Development).";
+  $("bsaNote").textContent = [bsaCheck(build.bsa), cbCheck(build.cb)].filter(Boolean).join(" ");
 
   // stacks
   var max = Math.max.apply(null, CATS.map(function(c){ return r.normal[c]; })) || 1;
@@ -1072,7 +1169,8 @@ function render(){
     var bar = $("bar-" + c);
     bar.innerHTML = SEGMENTS.map(function(s){
       var v = r.parts[s.key][c] || 0;
-      if (!v) return "";
+      if (s.key === "basic") v += (r.bsa[c] || 0);   // BSA is folded into the Basic segment
+      if (v <= 0) return "";
       return '<div class="seg" title="' + s.label + ' ' + v + '" style="width:' +
              (v / max * 100) + '%;background:var(' + s.css + ')"></div>';
     }).join("");
@@ -1105,7 +1203,7 @@ function renderCompare(){
     return;
   }
 
-  var a = compute(build), bC = compute(saved);
+  var a = compute(build), bC = compute(withDefaults(saved));
   var cells = [];
   cells.push('<div class="cmp-cell hd"><div class="cmp-lab">&nbsp;</div></div>');
   CAT_LABELS.forEach(function(l){ cells.push('<div class="cmp-cell hd"><div class="cmp-lab">' + l + '</div></div>'); });
@@ -1155,6 +1253,10 @@ function syncMetaToForm(){
   $("fType").value  = build.type;
   $("fChem").value  = String(build.chem);
   $("fNotes").value = build.notes;
+  $("fCB").value    = (build.cb && build.cb.on) ? "1" : "0";
+  $("fCB3").value   = build.cb.p3;
+  $("fCB2").value   = build.cb.p2;
+  $("fCB3").disabled = $("fCB2").disabled = !build.cb.on;
 }
 
 function bind(){
@@ -1163,6 +1265,13 @@ function bind(){
   $("fType").addEventListener("change", function(){ build.type = this.value; render(); });
   $("fChem").addEventListener("change", function(){ build.chem = Number(this.value); render(); });
   $("fCompare").addEventListener("change", renderCompare);
+  $("fCB").addEventListener("change", function(){
+    build.cb.on = (this.value === "1");
+    $("fCB3").disabled = $("fCB2").disabled = !build.cb.on;
+    render();
+  });
+  $("fCB3").addEventListener("change", function(){ build.cb.p3 = this.value; render(); });
+  $("fCB2").addEventListener("change", function(){ build.cb.p2 = this.value; render(); });
 
   $("btnSave").addEventListener("click", function(){
     var n = (build.name || "").trim();
@@ -1178,7 +1287,7 @@ function bind(){
   $("btnLoad").addEventListener("click", function(){
     var n = $("fCompare").value;
     if (!n){ toast("Pick a build first"); return; }
-    build = JSON.parse(JSON.stringify(Store.get(n)));
+    build = withDefaults(Store.get(n));
     syncMetaToForm();
     buildTable();
     render();
@@ -1253,11 +1362,19 @@ function sanitizeBuild(raw, key){
   var chem = Number(raw.chem);
   b.chem = (chem === 7 || chem === 8) ? chem : 0;
   b.notes = String(raw.notes == null ? "" : raw.notes).slice(0, 200);
+  var rc = (raw.cb && typeof raw.cb === "object") ? raw.cb : {};
+  b.cb = {
+    on: rc.on === true || rc.on === 1,
+    p3: CATS.indexOf(rc.p3) > -1 ? rc.p3 : "con",
+    p2: CATS.indexOf(rc.p2) > -1 ? rc.p2 : "pow"
+  };
   INPUT_ROWS.forEach(function(r){
     CATS.forEach(function(c){
       var v = raw[r.key] && typeof raw[r.key] === "object" ? Number(raw[r.key][c]) : 0;
       if (!isFinite(v)) v = 0;
-      b[r.key][c] = Math.max(-1000, Math.min(1000, v));
+      if (r.key === "bsa") v = Math.round(v);
+      var lim = (r.key === "bsa") ? 5 : 1000;
+      b[r.key][c] = Math.max(-lim, Math.min(lim, v));
     });
   });
   return b;
@@ -1326,18 +1443,22 @@ var t5 = {
   name: build.name, type: build.type,
   basic: JSON.parse(JSON.stringify(build.basic)),
   gi: JSON.parse(JSON.stringify(build.gi)),
-  dev: JSON.parse(JSON.stringify(build.dev))
+  dev: JSON.parse(JSON.stringify(build.dev)),
+  bsa: JSON.parse(JSON.stringify(build.bsa)),
+  cb:  JSON.parse(JSON.stringify(build.cb))
 };
 
 function t5Bases(){
   var b = {};
-  CATS.forEach(function(c){ b[c] = (t5.basic[c]||0) + (t5.gi[c]||0); });
+  var cbv = cbValues(t5.cb);
+  CATS.forEach(function(c){ b[c] = (t5.basic[c]||0) + (t5.gi[c]||0) + (t5.bsa[c]||0) + cbv[c]; });
   return b;
 }
 
 function t5LST(){
   var lst = {};
-  CATS.forEach(function(c){ lst[c] = (t5.basic[c]||0) + (t5.gi[c]||0) + (t5.dev[c]||0); });
+  var bs = t5Bases();
+  CATS.forEach(function(c){ lst[c] = bs[c] + (t5.dev[c]||0); });
   return lst;
 }
 
@@ -1348,6 +1469,7 @@ function buildT5Table(){
   var editableRows = [
     { key:"basic", label:"Basic", agg:"avg" },
     { key:"gi",    label:"GI",    agg:"sum" },
+    { key:"bsa",   label:"BSA",   agg:"sum" },
     { key:"dev",   label:"Development", agg:"sum" }
   ];
 
@@ -1362,9 +1484,11 @@ function buildT5Table(){
       inp.value = Math.round(t5[r.key][c] || 0);
       inp.setAttribute("aria-label", r.label + " " + c);
       inp.addEventListener("input", function(){
-        var whole = Math.round(Number(inp.value)) || 0;
+        var raw = inp.value;
+        var whole = raw === "" ? 0 : (Math.round(Number(raw)) || 0);
+        if (r.key === "bsa") whole = Math.max(-5, Math.min(5, whole));
         t5[r.key][c] = whole;
-        if (String(whole) !== inp.value) inp.value = whole;
+        if (raw !== "" && String(whole) !== raw) inp.value = whole;
         render5t();
       });
       td.appendChild(inp);
@@ -1375,6 +1499,12 @@ function buildT5Table(){
     tr.appendChild(tot);
     tb.appendChild(tr);
   });
+
+  var trCb = document.createElement("tr");
+  trCb.innerHTML = "<th>Ceiling Break</th>" +
+    CATS.map(function(c){ return '<td><span class="val locked" id="t5v-cb-'+c+'">0</span></td>'; }).join("") +
+    '<td class="total-cell" id="t5tot-cb">0</td>';
+  tb.appendChild(trCb);
 
   var trLst = document.createElement("tr");
   trLst.className = "result lst";
@@ -1394,7 +1524,8 @@ function renderLockGrid(hostId, values){
 // Effective max level for the 5T tab: Sig/Legend are always 20, Supreme is 30 or 35.
 function t5Level(){
   if (t5.type !== "Supreme") return 20;
-  return t5.maxLevel === 35 ? 35 : 30;
+  // Level 35 needs a Supreme with ceiling break on.
+  return (t5.cb && t5.cb.on && t5.maxLevel === 35) ? 35 : 30;
 }
 
 // Pool / ticket / cap rules for the current type + level.
@@ -1406,14 +1537,14 @@ function t5TypeInfo(){
 function syncT5LevelControl(){
   var sel = $("t5LevelInput");
   var isSupreme = (t5.type === "Supreme");
-  var mode = isSupreme ? "supreme" : "fixed";
+  var mode = !isSupreme ? "fixed" : ((t5.cb && t5.cb.on) ? "supreme-cb" : "supreme");
   if (sel.getAttribute("data-mode") !== mode){
     sel.setAttribute("data-mode", mode);
-    sel.innerHTML = isSupreme
-      ? '<option value="30">30 (87 pts)</option><option value="35">35 (102 pts)</option>'
-      : '<option value="20">20 (57 pts)</option>';
+    if (mode === "supreme-cb")  sel.innerHTML = '<option value="30">30 (87 pts)</option><option value="35">35 (102 pts)</option>';
+    else if (mode === "supreme") sel.innerHTML = '<option value="30">30 (87 pts) — CB unlocks 35</option>';
+    else                         sel.innerHTML = '<option value="20">20 (57 pts)</option>';
   }
-  sel.disabled = !isSupreme;
+  sel.disabled = (mode !== "supreme-cb");
   sel.value = String(t5Level());
 }
 
@@ -1443,9 +1574,14 @@ function render5t(){
   syncT5LevelControl();
   render5tNote(typeInfo);
 
-  ["basic","gi","dev"].forEach(function(k){
+  ["basic","gi","bsa","dev"].forEach(function(k){
     $("t5tot-" + k).textContent = k === "basic" ? avg(t5.basic) : sum(t5[k]);
   });
+
+  var cbShown = cbValues(t5.cb);
+  CATS.forEach(function(c){ $("t5v-cb-" + c).textContent = cbShown[c]; });
+  $("t5tot-cb").textContent = sum(cbShown);
+  $("t5BsaNote").textContent = [bsaCheck(t5.bsa), cbCheck(t5.cb)].filter(Boolean).join(" ");
 
   var lst = t5LST();
   CATS.forEach(function(c){ $("t5v-lst-" + c).textContent = lst[c]; });
@@ -1617,6 +1753,10 @@ function formatPct(p){
 function syncT5MetaToForm(){
   $("t5NameInput").value = t5.name || "";
   $("t5TypeInput").value = t5.type || "Supreme";
+  $("t5CB").value  = (t5.cb && t5.cb.on) ? "1" : "0";
+  $("t5CB3").value = t5.cb.p3;
+  $("t5CB2").value = t5.cb.p2;
+  $("t5CB3").disabled = $("t5CB2").disabled = !t5.cb.on;
 }
 
 function refreshT5SourceList(){
@@ -1634,6 +1774,14 @@ function bind5t(){
 
   $("t5NameInput").addEventListener("input", function(){ t5.name = this.value; });
   $("t5TypeInput").addEventListener("change", function(){ t5.type = this.value; render5t(); });
+  $("t5CB").addEventListener("change", function(){
+    t5.cb.on = (this.value === "1");
+    if (!t5.cb.on) t5.maxLevel = 30;     // level 35 needs CB
+    syncT5MetaToForm();
+    render5t();
+  });
+  $("t5CB3").addEventListener("change", function(){ t5.cb.p3 = this.value; render5t(); });
+  $("t5CB2").addEventListener("change", function(){ t5.cb.p2 = this.value; render5t(); });
   $("t5LevelInput").addEventListener("change", function(){
     t5.maxLevel = Number(this.value) === 35 ? 35 : 30;
     render5t();
@@ -1649,7 +1797,9 @@ function bind5t(){
       name: source.name, type: source.type,
       basic: JSON.parse(JSON.stringify(source.basic)),
       gi: JSON.parse(JSON.stringify(source.gi)),
-      dev: JSON.parse(JSON.stringify(source.dev))
+      dev: JSON.parse(JSON.stringify(source.dev)),
+      bsa: JSON.parse(JSON.stringify(source.bsa || zeroRow())),
+      cb:  JSON.parse(JSON.stringify(source.cb || { on:false, p3:"con", p2:"pow" }))
     };
     buildT5Table();
     syncT5MetaToForm();
@@ -1675,6 +1825,7 @@ bind5t();
 syncT5MetaToForm();
 refreshT5SourceList();
 render5t();
+switchTab("5t");   // 5T Calculator is the landing tab
 </script>
 </body>
 </html>
