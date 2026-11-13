@@ -602,6 +602,9 @@ var TYPES = {
 };
 
 var SPECIAL_AWARDS = [12, 10, 4];   // 1st, 2nd, 3rd highest development
+// In game, special training doesn't apply until the full 57 development
+// points have been allocated.
+var SPECIAL_MIN_DEV = 57;
 
 // 5T Calculator — dev pool / ticket / practical-cap rules by type
 var TYPE_DEV = {
@@ -785,6 +788,9 @@ function compute(b){
   var adjBase = {};
   CATS.forEach(function(c){ adjBase[c] = (b.basic[c]||0) + (bsa[c]||0) + cbv[c]; });
   var sp = specialFor(b.dev, adjBase);
+  var devTotal = sum(b.dev);
+  var specialActive = devTotal >= SPECIAL_MIN_DEV;
+  if (!specialActive) sp = { values: zeroRow(), order: sp.order };   // not unlocked yet
 
   var parts = {
     basic: b.basic, gi: b.gi, dev: b.dev, trainer: b.trainer, cb: cbv,
@@ -808,6 +814,8 @@ function compute(b){
     parts: parts,
     bsa: bsa,
     special: sp,
+    specialActive: specialActive,
+    devTotal: devTotal,
     normal: normal,
     lst: lst,
     chem: chem,
@@ -1237,7 +1245,10 @@ function render(){
   // special explainer
   var names = r.special.order.map(function(c){ return CAT_LABELS[CATS.indexOf(c)]; });
   $("specialNote").textContent =
-    "Special training follows your development spread: " +
+    (r.specialActive
+      ? "Special training follows your development spread: "
+      : "Special training isn't applied yet — it unlocks once development totals " + SPECIAL_MIN_DEV +
+        " points (currently " + r.devTotal + "). Once it does: ") +
     names[0] + " +12, " + names[1] + " +10, " + names[2] + " +4. " +
     "Equal development is broken by the higher base stat. " +
     "LST Total is the lowest of the five category totals (Basic + GI + BSA + Ceiling Break + Development).";
