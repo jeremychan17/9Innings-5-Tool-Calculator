@@ -281,8 +281,8 @@
         <input type="text" id="fNotes" placeholder="HH/Pred/Char">
       </div>
       <div>
-        <label for="fCB">Ceiling break (CB)</label>
-        <select id="fCB"><option value="0">Off</option><option value="1">On</option></select>
+        <label for="fCB">Ceiling break (CB) level</label>
+        <select id="fCB"><option value="0">0 (off)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6 (max)</option></select>
       </div>
       <div>
         <label for="fCB3">CB +3 stat</label>
@@ -422,8 +422,8 @@
     </div>
     <div class="meta" style="margin-top:12px">
       <div>
-        <label for="t5CB">Ceiling break (CB)</label>
-        <select id="t5CB"><option value="0">Off</option><option value="1">On</option></select>
+        <label for="t5CB">Ceiling break (CB) level</label>
+        <select id="t5CB"><option value="0">0 (off)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6 (max)</option></select>
       </div>
       <div>
         <label for="t5CB3">CB +3 stat</label>
@@ -438,7 +438,7 @@
         </select>
       </div>
     </div>
-    <div class="note">Level 35 is only available on a Supreme with ceiling break turned on.</div>
+    <div class="note">CB level: the +3 stat gains 1 point at CB levels 1, 3 and 5; the +2 stat gains 1 point at levels 4 and 6 (level 6 = full +3 / +2). CB level 1 or higher unlocks max level 35 on a Supreme.</div>
   </section>
 
   <!-- BASIC / GI (locked) + DEV (editable) -->
@@ -574,7 +574,8 @@
      Special : dev rank -> 1st +12, 2nd +10, 3rd +4, rest 0
      LST     : Basic + GI + BSA + Ceiling Break + Development ; LST Total = lowest of the five
      BSA     : base stat adjust, two stats, each within +/-5, net zero
-     CB      : ceiling break, +3 to one stat and +2 to another; on a Supreme it unlocks level 35
+     CB      : ceiling break level 0-6. Main (+3) stat: +1 at levels 1, 3, 5. Secondary (+2) stat:
+               +1 at levels 4, 6. Level 1+ on a Supreme unlocks max level 35
      w/ Chem : Normal Lineup Stat + chem bonus (7 or 8)
 
    5T Calculator model:
@@ -668,7 +669,7 @@ var Store = (function(){
 
 /* ---------- state ---------- */
 function blankBuild(){
-  var b = { name:"", type:"Supreme", chem:0, notes:"", cb:{ on:false, p3:"con", p2:"pow" },
+  var b = { name:"", type:"Supreme", chem:0, notes:"", cb:{ level:0, p3:"con", p2:"pow" },
             role:"batter", isTeam:false, mentor:{ type:"none", team:"none", sig:"none" } };
   INPUT_ROWS.forEach(function(r){
     b[r.key] = { con:0, pow:0, eye:0, spd:0, fld:0 };
@@ -681,18 +682,38 @@ var build = blankBuild();
 
 function zeroRow(){ return { con:0, pow:0, eye:0, spd:0, fld:0 }; }
 
-// Ceiling break: +3 to one base stat and +2 to a different one.
-function cbValues(cb){
-  var out = zeroRow();
-  if (cb && cb.on && cb.p3 !== cb.p2 && CATS.indexOf(cb.p3) > -1 && CATS.indexOf(cb.p2) > -1){
-    out[cb.p3] = 3;
-    out[cb.p2] = 2;
+// Ceiling break, levels 0-6. The main (+3) stat gets 1 point at CB levels
+// 1, 3 and 5; the secondary (+2) stat gets 1 point at levels 4 and 6.
+// Level 1+ unlocks max level 35 on a Supreme.
+var CB_MAIN = [0, 1, 1, 2, 2, 3, 3];   // main-stat points at CB level 0..6
+var CB_SEC  = [0, 0, 0, 0, 1, 1, 2];   // secondary-stat points at CB level 0..6
+
+// Normalizes any stored shape ({level}, or the older {on}) to {level, p3, p2}.
+function normCb(cb){
+  var out = { level:0, p3:"con", p2:"pow" };
+  if (cb && typeof cb === "object"){
+    if (cb.level != null && isFinite(Number(cb.level))) out.level = Math.max(0, Math.min(6, Math.round(Number(cb.level))));
+    else if (cb.on === true || cb.on === 1) out.level = 6;
+    if (CATS.indexOf(cb.p3) > -1) out.p3 = cb.p3;
+    if (CATS.indexOf(cb.p2) > -1) out.p2 = cb.p2;
   }
   return out;
 }
+function cbOn(cb){ return normCb(cb).level >= 1; }
+
+function cbValues(cb){
+  var c = normCb(cb);
+  var out = zeroRow();
+  var main = CB_MAIN[c.level], sec = CB_SEC[c.level];
+  if (sec > 0 && c.p3 === c.p2) return out;     // invalid pairing: not applied
+  out[c.p3] += main;
+  out[c.p2] += sec;
+  return out;
+}
 function cbCheck(cb){
-  if (cb && cb.on && cb.p3 === cb.p2){
-    return "Ceiling break: the +3 and +2 have to go to different stats (not applied until fixed).";
+  var c = normCb(cb);
+  if (c.level >= 4 && c.p3 === c.p2){
+    return "Ceiling break: the +3 and +2 stats have to be different (not applied until fixed).";
   }
   return "";
 }
@@ -732,7 +753,7 @@ function mentorBonus(b){
 function withDefaults(b){
   var c = JSON.parse(JSON.stringify(b));
   if (!c.bsa) c.bsa = zeroRow();
-  if (!c.cb) c.cb = { on:false, p3:"con", p2:"pow" };
+  c.cb = normCb(c.cb);
   if (!c.mentor) c.mentor = { type:"none", team:"none", sig:"none" };
   if (!c.role) c.role = "batter";
   c.isTeam = !!c.isTeam;
@@ -1316,10 +1337,10 @@ function syncMetaToForm(){
   $("fType").value  = build.type;
   $("fChem").value  = String(build.chem);
   $("fNotes").value = build.notes;
-  $("fCB").value    = (build.cb && build.cb.on) ? "1" : "0";
+  $("fCB").value    = String(build.cb.level);
   $("fCB3").value   = build.cb.p3;
   $("fCB2").value   = build.cb.p2;
-  $("fCB3").disabled = $("fCB2").disabled = !build.cb.on;
+  $("fCB3").disabled = $("fCB2").disabled = (build.cb.level === 0);
   $("fRole").value   = build.role;
   $("fTeam").checked = !!build.isTeam;
   $("fMType").value  = build.mentor.type;
@@ -1334,8 +1355,8 @@ function bind(){
   $("fChem").addEventListener("change", function(){ build.chem = Number(this.value); render(); });
   $("fCompare").addEventListener("change", renderCompare);
   $("fCB").addEventListener("change", function(){
-    build.cb.on = (this.value === "1");
-    $("fCB3").disabled = $("fCB2").disabled = !build.cb.on;
+    build.cb.level = Number(this.value) || 0;
+    $("fCB3").disabled = $("fCB2").disabled = (build.cb.level === 0);
     render();
   });
   $("fRole").addEventListener("change", function(){ build.role = this.value; render(); });
@@ -1443,12 +1464,7 @@ function sanitizeBuild(raw, key){
     team: (rm.team === "team" || rm.team === "nonteam") ? rm.team : "none",
     sig:  (rm.sig === "pitchers" || rm.sig === "batters") ? rm.sig : "none"
   };
-  var rc = (raw.cb && typeof raw.cb === "object") ? raw.cb : {};
-  b.cb = {
-    on: rc.on === true || rc.on === 1,
-    p3: CATS.indexOf(rc.p3) > -1 ? rc.p3 : "con",
-    p2: CATS.indexOf(rc.p2) > -1 ? rc.p2 : "pow"
-  };
+  b.cb = normCb(raw.cb);
   INPUT_ROWS.forEach(function(r){
     CATS.forEach(function(c){
       var v = raw[r.key] && typeof raw[r.key] === "object" ? Number(raw[r.key][c]) : 0;
@@ -1605,8 +1621,8 @@ function renderLockGrid(hostId, values){
 // Effective max level for the 5T tab: Sig/Legend are always 20, Supreme is 30 or 35.
 function t5Level(){
   if (t5.type !== "Supreme") return 20;
-  // Level 35 needs a Supreme with ceiling break on.
-  return (t5.cb && t5.cb.on && t5.maxLevel === 35) ? 35 : 30;
+  // Level 35 needs a Supreme with CB level 1 or higher.
+  return (cbOn(t5.cb) && t5.maxLevel === 35) ? 35 : 30;
 }
 
 // Pool / ticket / cap rules for the current type + level.
@@ -1618,7 +1634,7 @@ function t5TypeInfo(){
 function syncT5LevelControl(){
   var sel = $("t5LevelInput");
   var isSupreme = (t5.type === "Supreme");
-  var mode = !isSupreme ? "fixed" : ((t5.cb && t5.cb.on) ? "supreme-cb" : "supreme");
+  var mode = !isSupreme ? "fixed" : (cbOn(t5.cb) ? "supreme-cb" : "supreme");
   if (sel.getAttribute("data-mode") !== mode){
     sel.setAttribute("data-mode", mode);
     if (mode === "supreme-cb")  sel.innerHTML = '<option value="30">30 (87 pts)</option><option value="35">35 (102 pts)</option>';
@@ -1834,10 +1850,10 @@ function formatPct(p){
 function syncT5MetaToForm(){
   $("t5NameInput").value = t5.name || "";
   $("t5TypeInput").value = t5.type || "Supreme";
-  $("t5CB").value  = (t5.cb && t5.cb.on) ? "1" : "0";
+  $("t5CB").value  = String(t5.cb.level);
   $("t5CB3").value = t5.cb.p3;
   $("t5CB2").value = t5.cb.p2;
-  $("t5CB3").disabled = $("t5CB2").disabled = !t5.cb.on;
+  $("t5CB3").disabled = $("t5CB2").disabled = (t5.cb.level === 0);
 }
 
 function refreshT5SourceList(){
@@ -1856,8 +1872,8 @@ function bind5t(){
   $("t5NameInput").addEventListener("input", function(){ t5.name = this.value; });
   $("t5TypeInput").addEventListener("change", function(){ t5.type = this.value; render5t(); });
   $("t5CB").addEventListener("change", function(){
-    t5.cb.on = (this.value === "1");
-    if (!t5.cb.on) t5.maxLevel = 30;     // level 35 needs CB
+    t5.cb.level = Number(this.value) || 0;
+    if (t5.cb.level === 0) t5.maxLevel = 30;     // level 35 needs CB level 1+
     syncT5MetaToForm();
     render5t();
   });
@@ -1880,7 +1896,7 @@ function bind5t(){
       gi: JSON.parse(JSON.stringify(source.gi)),
       dev: JSON.parse(JSON.stringify(source.dev)),
       bsa: JSON.parse(JSON.stringify(source.bsa || zeroRow())),
-      cb:  JSON.parse(JSON.stringify(source.cb || { on:false, p3:"con", p2:"pow" }))
+      cb:  normCb(source.cb)
     };
     buildT5Table();
     syncT5MetaToForm();
