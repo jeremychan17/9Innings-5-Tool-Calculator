@@ -28,6 +28,7 @@
     --seg-bd:#6FA3C4;
     --seg-trainer:#9BB33F;
     --seg-cb:#D9D36A;
+    --seg-mentor:#7C8FD6;
     --r:3px;
   }
   *{box-sizing:border-box}
@@ -263,6 +264,8 @@
           <option value="Signature">Signature</option>
           <option value="Supreme" selected>Supreme</option>
           <option value="Legend">Legend</option>
+          <option value="Prime">Prime</option>
+          <option value="All Star">All Star</option>
         </select>
       </div>
       <div>
@@ -294,6 +297,34 @@
         </select>
       </div>
     </div>
+  </section>
+
+  <!-- MENTOR -->
+  <section class="panel">
+    <div class="panel-hd">Mentor</div>
+    <div class="meta">
+      <div>
+        <label for="fRole">This card is a</label>
+        <select id="fRole"><option value="batter">Batter</option><option value="pitcher">Pitcher</option></select>
+      </div>
+      <div>
+        <label for="fTeam">Team card</label>
+        <div style="padding:9px 0"><label style="display:inline-flex;align-items:center;gap:8px;margin:0;text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer"><input type="checkbox" id="fTeam"> Yes, this is a team card</label></div>
+      </div>
+      <div>
+        <label for="fMType">Mentor card type</label>
+        <select id="fMType"><option value="none">None</option><option value="Prime">Prime</option><option value="All Star">All Star</option></select>
+      </div>
+      <div>
+        <label for="fMTeam">Mentor team</label>
+        <select id="fMTeam"><option value="none">None</option><option value="team">Team card</option><option value="nonteam">Non-team card</option></select>
+      </div>
+      <div>
+        <label for="fMSig">Sig boost</label>
+        <select id="fMSig"><option value="none">None</option><option value="pitchers">Pitchers</option><option value="batters">Batters</option></select>
+      </div>
+    </div>
+    <div class="note" id="mentorNote"></div>
   </section>
 
   <!-- STAT TABLE -->
@@ -376,6 +407,8 @@
           <option value="Signature">Signature</option>
           <option value="Supreme">Supreme</option>
           <option value="Legend">Legend</option>
+          <option value="Prime">Prime</option>
+          <option value="All Star">All Star</option>
         </select>
       </div>
       <div>
@@ -528,7 +561,7 @@
   </div>
 
 </div>
-<div style="text-align:center;font-size:11px;color:var(--muted);padding:6px 0 28px" id="verLabel">v1.2 · BSA · Ceiling break · Level 35</div>
+<div style="text-align:center;font-size:11px;color:var(--muted);padding:6px 0 28px" id="verLabel">v1.3 · Mentor · Prime / All Star</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -562,7 +595,9 @@ var CAT_LABELS = ["Con/Loc","Pow/Vel","Eye/Sta","Spd/Fb","Fld/Brk"];
 var TYPES = {
   Signature: { set: 12, bd: 2, sig: 12 },
   Supreme:   { set: 10, bd: 2, sig: 0  },
-  Legend:    { set: 10, bd: 2, sig: 0  }
+  Legend:    { set: 10, bd: 2, sig: 0  },
+  Prime:     { set: 12, bd: 0, sig: 0  },
+  "All Star":{ set: 10, bd: 0, sig: 0  }
 };
 
 var SPECIAL_AWARDS = [12, 10, 4];   // 1st, 2nd, 3rd highest development
@@ -571,6 +606,8 @@ var SPECIAL_AWARDS = [12, 10, 4];   // 1st, 2nd, 3rd highest development
 var TYPE_DEV = {
   Signature: { pool: 57, ticketPoints: 9,  practicalCap: 25 },
   Legend:    { pool: 57, ticketPoints: 9,  practicalCap: 25 },
+  Prime:     { pool: 57, ticketPoints: 9,  practicalCap: 25 },
+  "All Star":{ pool: 57, ticketPoints: 9,  practicalCap: 25 },
   Supreme:   { pool: 87, ticketPoints: 15, practicalCap: 40 }
 };
 // Supreme with the level 35 mechanic: +15 pool (5 levels x 3). One extra
@@ -586,7 +623,8 @@ var SEGMENTS = [
   { key:"special", label:"Special",       css:"--seg-special" },
   { key:"sig",     label:"Sig",           css:"--seg-sig" },
   { key:"bd",      label:"Black Diamond", css:"--seg-bd" },
-  { key:"trainer", label:"Trainer",       css:"--seg-trainer" }
+  { key:"trainer", label:"Trainer",       css:"--seg-trainer" },
+  { key:"mentor",  label:"Mentor",        css:"--seg-mentor" }
 ];
 
 var INPUT_ROWS = [
@@ -630,7 +668,8 @@ var Store = (function(){
 
 /* ---------- state ---------- */
 function blankBuild(){
-  var b = { name:"", type:"Supreme", chem:0, notes:"", cb:{ on:false, p3:"con", p2:"pow" } };
+  var b = { name:"", type:"Supreme", chem:0, notes:"", cb:{ on:false, p3:"con", p2:"pow" },
+            role:"batter", isTeam:false, mentor:{ type:"none", team:"none", sig:"none" } };
   INPUT_ROWS.forEach(function(r){
     b[r.key] = { con:0, pow:0, eye:0, spd:0, fld:0 };
   });
@@ -673,11 +712,30 @@ function bsaCheck(row){
   return "";
 }
 
-// Older saved builds predate BSA / CB; fill those in on a copy.
+// Mentor bonus, added equally to all five stats (Normal Lineup stat only, not LST):
+//   +2 if the mentor's card type (Prime / All Star) matches this card's type
+//   +1 if the mentor's team setting matches this card (team vs non-team)
+//   +1 if the mentor's sig boost (pitchers / batters) matches this card's role
+function mentorParts(b){
+  var m = b.mentor || {};
+  var typeHit = (m.type === "Prime" || m.type === "All Star") && m.type === b.type;
+  var teamHit = (m.team === "team" && !!b.isTeam) || (m.team === "nonteam" && !b.isTeam);
+  var sigHit  = (m.sig === "pitchers" && b.role === "pitcher") || (m.sig === "batters" && b.role === "batter");
+  return { type: typeHit ? 2 : 0, team: teamHit ? 1 : 0, sig: sigHit ? 1 : 0 };
+}
+function mentorBonus(b){
+  var p = mentorParts(b);
+  return p.type + p.team + p.sig;
+}
+
+// Older saved builds predate BSA / CB / Mentor; fill those in on a copy.
 function withDefaults(b){
   var c = JSON.parse(JSON.stringify(b));
   if (!c.bsa) c.bsa = zeroRow();
   if (!c.cb) c.cb = { on:false, p3:"con", p2:"pow" };
+  if (!c.mentor) c.mentor = { type:"none", team:"none", sig:"none" };
+  if (!c.role) c.role = "batter";
+  c.isTeam = !!c.isTeam;
   return c;
 }
 
@@ -709,6 +767,7 @@ function compute(b){
 
   var parts = {
     basic: b.basic, gi: b.gi, dev: b.dev, trainer: b.trainer, cb: cbv,
+    mentor: { con:mentorBonus(b), pow:mentorBonus(b), eye:mentorBonus(b), spd:mentorBonus(b), fld:mentorBonus(b) },
     set: {}, bd: {}, sig: {}, special: sp.values
   };
   CATS.forEach(function(c){
@@ -1093,7 +1152,7 @@ function buildTable(){
     tb.appendChild(tr);
   });
 
-  [["cb","Ceiling Break"],["set","Set Deck"],["special","Special"],["sig","Sig"],["bd","Black Diamond"]].forEach(function(p){
+  [["cb","Ceiling Break"],["set","Set Deck"],["special","Special"],["sig","Sig"],["bd","Black Diamond"],["mentor","Mentor"]].forEach(function(p){
     var tr = document.createElement("tr");
     tr.innerHTML = "<th>" + p[1] + "</th>" +
       CATS.map(function(c){ return '<td><span class="val locked" id="v-'+p[0]+'-'+c+'">0</span></td>'; }).join("") +
@@ -1140,7 +1199,7 @@ function render(){
     $("tot-" + row.key).textContent = v;
   });
 
-  ["cb","set","special","sig","bd"].forEach(function(k){
+  ["cb","set","special","sig","bd","mentor"].forEach(function(k){
     CATS.forEach(function(c){ $("v-" + k + "-" + c).textContent = r.parts[k][c]; });
     $("tot-" + k).textContent = sum(r.parts[k]);
   });
@@ -1162,6 +1221,10 @@ function render(){
     "Equal development is broken by the higher base stat. " +
     "LST Total is the lowest of the five category totals (Basic + GI + BSA + Ceiling Break + Development).";
   $("bsaNote").textContent = [bsaCheck(build.bsa), cbCheck(build.cb)].filter(Boolean).join(" ");
+
+  var mp = mentorParts(build);
+  $("mentorNote").textContent = "Mentor adds " + (mp.type + mp.team + mp.sig) + " to every stat (Normal Lineup stat only — LST isn't affected): " +
+    "card type " + (mp.type ? "+2" : "0") + ", team " + (mp.team ? "+1" : "0") + ", sig boost " + (mp.sig ? "+1" : "0") + ".";
 
   // stacks
   var max = Math.max.apply(null, CATS.map(function(c){ return r.normal[c]; })) || 1;
@@ -1257,6 +1320,11 @@ function syncMetaToForm(){
   $("fCB3").value   = build.cb.p3;
   $("fCB2").value   = build.cb.p2;
   $("fCB3").disabled = $("fCB2").disabled = !build.cb.on;
+  $("fRole").value   = build.role;
+  $("fTeam").checked = !!build.isTeam;
+  $("fMType").value  = build.mentor.type;
+  $("fMTeam").value  = build.mentor.team;
+  $("fMSig").value   = build.mentor.sig;
 }
 
 function bind(){
@@ -1270,6 +1338,11 @@ function bind(){
     $("fCB3").disabled = $("fCB2").disabled = !build.cb.on;
     render();
   });
+  $("fRole").addEventListener("change", function(){ build.role = this.value; render(); });
+  $("fTeam").addEventListener("change", function(){ build.isTeam = this.checked; render(); });
+  $("fMType").addEventListener("change", function(){ build.mentor.type = this.value; render(); });
+  $("fMTeam").addEventListener("change", function(){ build.mentor.team = this.value; render(); });
+  $("fMSig").addEventListener("change", function(){ build.mentor.sig = this.value; render(); });
   $("fCB3").addEventListener("change", function(){ build.cb.p3 = this.value; render(); });
   $("fCB2").addEventListener("change", function(){ build.cb.p2 = this.value; render(); });
 
@@ -1362,6 +1435,14 @@ function sanitizeBuild(raw, key){
   var chem = Number(raw.chem);
   b.chem = (chem === 7 || chem === 8) ? chem : 0;
   b.notes = String(raw.notes == null ? "" : raw.notes).slice(0, 200);
+  b.role = raw.role === "pitcher" ? "pitcher" : "batter";
+  b.isTeam = raw.isTeam === true || raw.isTeam === 1;
+  var rm = (raw.mentor && typeof raw.mentor === "object") ? raw.mentor : {};
+  b.mentor = {
+    type: (rm.type === "Prime" || rm.type === "All Star") ? rm.type : "none",
+    team: (rm.team === "team" || rm.team === "nonteam") ? rm.team : "none",
+    sig:  (rm.sig === "pitchers" || rm.sig === "batters") ? rm.sig : "none"
+  };
   var rc = (raw.cb && typeof raw.cb === "object") ? raw.cb : {};
   b.cb = {
     on: rc.on === true || rc.on === 1,
@@ -1556,7 +1637,7 @@ function render5tNote(typeInfo){
   } else if (t5.type === "Supreme"){
     resets = "Supreme lets you reset to level 1 or 20 (resetting to 20 keeps your first 3 tickets)";
   } else {
-    resets = "Sig/Legend resets to level 1";
+    resets = "Non-Supreme cards reset to level 1 (assumed for Prime and All Star)";
   }
   $("t5DiffNote").textContent =
     "Tickets cover the required points first wherever they help most; whatever's left has to come from random level-ups. " +
