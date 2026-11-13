@@ -323,6 +323,10 @@
         <label for="fMSig">Sig boost</label>
         <select id="fMSig"><option value="none">None</option><option value="pitchers">Pitchers</option><option value="batters">Batters</option></select>
       </div>
+      <div>
+        <label for="fMSP">Sig vs. Prime boost</label>
+        <select id="fMSP"><option value="none">None</option><option value="Signature">Sig</option><option value="Prime">Prime</option></select>
+      </div>
     </div>
     <div class="note" id="mentorNote"></div>
   </section>
@@ -594,12 +598,28 @@ var CAT_LABELS = ["Con/Loc","Pow/Vel","Eye/Sta","Spd/Fb","Fld/Brk"];
 
 // Type -> per-category Set Deck, Black Diamond and Sig values
 var TYPES = {
-  Signature: { set: 12, bd: 2, sig: 12 },
+  Signature: { set: 12, bd: 1, sig: 12 },
   Supreme:   { set: 10, bd: 2, sig: 0  },
   Legend:    { set: 10, bd: 2, sig: 0  },
   Prime:     { set: 12, bd: 0, sig: 0  },
   "All Star":{ set: 10, bd: 0, sig: 0  }
 };
+// Overrides when ceiling break is on (CB level 1+). Prime / All Star are unchanged.
+var TYPES_CB = {
+  Signature: { set: 14, bd: 2, sig: 14 },
+  Supreme:   { bd: 3 },
+  Legend:    { bd: 3 }
+};
+// Set Deck / BD / Sig for a card type, taking ceiling break into account.
+function typeValues(type, cb){
+  var base = TYPES[type] || TYPES.Supreme;
+  var out = { set: base.set, bd: base.bd, sig: base.sig };
+  var over = cbOn(cb) && Object.prototype.hasOwnProperty.call(TYPES_CB, type) ? TYPES_CB[type] : null;
+  if (over){
+    ["set", "bd", "sig"].forEach(function(k){ if (over[k] != null) out[k] = over[k]; });
+  }
+  return out;
+}
 
 var SPECIAL_AWARDS = [12, 10, 4];   // 1st, 2nd, 3rd highest development
 // In game, special training doesn't apply until the full 57 development
@@ -673,7 +693,7 @@ var Store = (function(){
 /* ---------- state ---------- */
 function blankBuild(){
   var b = { name:"", type:"Supreme", chem:0, notes:"", cb:{ level:0, p3:"con", p2:"pow" },
-            role:"batter", isTeam:false, mentor:{ type:"none", team:"none", sig:"none" } };
+            role:"batter", isTeam:false, mentor:{ type:"none", team:"none", sig:"none", sp:"none" } };
   INPUT_ROWS.forEach(function(r){
     b[r.key] = { con:0, pow:0, eye:0, spd:0, fld:0 };
   });
@@ -740,16 +760,18 @@ function bsaCheck(row){
 //   +2 if the mentor's card type (Prime / All Star) matches this card's type
 //   +1 if the mentor's team setting matches this card (team vs non-team)
 //   +1 if the mentor's sig boost (pitchers / batters) matches this card's role
+//   +1 if the mentor's sig-vs-prime setting (Signature / Prime) matches this card's type
 function mentorParts(b){
   var m = b.mentor || {};
   var typeHit = (m.type === "Prime" || m.type === "All Star") && m.type === b.type;
   var teamHit = (m.team === "team" && !!b.isTeam) || (m.team === "nonteam" && !b.isTeam);
   var sigHit  = (m.sig === "pitchers" && b.role === "pitcher") || (m.sig === "batters" && b.role === "batter");
-  return { type: typeHit ? 2 : 0, team: teamHit ? 1 : 0, sig: sigHit ? 1 : 0 };
+  var spHit   = (m.sp === "Signature" || m.sp === "Prime") && m.sp === b.type;
+  return { type: typeHit ? 2 : 0, team: teamHit ? 1 : 0, sig: sigHit ? 1 : 0, sp: spHit ? 1 : 0 };
 }
 function mentorBonus(b){
   var p = mentorParts(b);
-  return p.type + p.team + p.sig;
+  return p.type + p.team + p.sig + p.sp;
 }
 
 // Older saved builds predate BSA / CB / Mentor; fill those in on a copy.
@@ -757,7 +779,8 @@ function withDefaults(b){
   var c = JSON.parse(JSON.stringify(b));
   if (!c.bsa) c.bsa = zeroRow();
   c.cb = normCb(c.cb);
-  if (!c.mentor) c.mentor = { type:"none", team:"none", sig:"none" };
+  if (!c.mentor) c.mentor = {};
+  ["type", "team", "sig", "sp"].forEach(function(k){ if (!c.mentor[k]) c.mentor[k] = "none"; });
   if (!c.role) c.role = "batter";
   c.isTeam = !!c.isTeam;
   return c;
@@ -781,7 +804,7 @@ function specialFor(dev, basic){
 }
 
 function compute(b){
-  var t = TYPES[b.type] || TYPES.Supreme;
+  var t = typeValues(b.type, b.cb);
   var bsa = b.bsa || zeroRow();
   var cbv = cbValues(b.cb);
   // Special-training tiebreak uses the adjusted base (Basic + BSA + CB).
@@ -1255,8 +1278,9 @@ function render(){
   $("bsaNote").textContent = [bsaCheck(build.bsa), cbCheck(build.cb)].filter(Boolean).join(" ");
 
   var mp = mentorParts(build);
-  $("mentorNote").textContent = "Mentor adds " + (mp.type + mp.team + mp.sig) + " to every stat (Normal Lineup stat only — LST isn't affected): " +
-    "card type " + (mp.type ? "+2" : "0") + ", team " + (mp.team ? "+1" : "0") + ", sig boost " + (mp.sig ? "+1" : "0") + ".";
+  $("mentorNote").textContent = "Mentor adds " + (mp.type + mp.team + mp.sig + mp.sp) + " to every stat (Normal Lineup stat only — LST isn't affected): " +
+    "card type " + (mp.type ? "+2" : "0") + ", team " + (mp.team ? "+1" : "0") + ", sig boost " + (mp.sig ? "+1" : "0") +
+    ", sig/prime " + (mp.sp ? "+1" : "0") + ".";
 
   // stacks
   var max = Math.max.apply(null, CATS.map(function(c){ return r.normal[c]; })) || 1;
@@ -1357,6 +1381,7 @@ function syncMetaToForm(){
   $("fMType").value  = build.mentor.type;
   $("fMTeam").value  = build.mentor.team;
   $("fMSig").value   = build.mentor.sig;
+  $("fMSP").value    = build.mentor.sp;
 }
 
 function bind(){
@@ -1375,6 +1400,7 @@ function bind(){
   $("fMType").addEventListener("change", function(){ build.mentor.type = this.value; render(); });
   $("fMTeam").addEventListener("change", function(){ build.mentor.team = this.value; render(); });
   $("fMSig").addEventListener("change", function(){ build.mentor.sig = this.value; render(); });
+  $("fMSP").addEventListener("change", function(){ build.mentor.sp = this.value; render(); });
   $("fCB3").addEventListener("change", function(){ build.cb.p3 = this.value; render(); });
   $("fCB2").addEventListener("change", function(){ build.cb.p2 = this.value; render(); });
 
@@ -1473,7 +1499,8 @@ function sanitizeBuild(raw, key){
   b.mentor = {
     type: (rm.type === "Prime" || rm.type === "All Star") ? rm.type : "none",
     team: (rm.team === "team" || rm.team === "nonteam") ? rm.team : "none",
-    sig:  (rm.sig === "pitchers" || rm.sig === "batters") ? rm.sig : "none"
+    sig:  (rm.sig === "pitchers" || rm.sig === "batters") ? rm.sig : "none",
+    sp:   (rm.sp === "Signature" || rm.sp === "Prime") ? rm.sp : "none"
   };
   b.cb = normCb(raw.cb);
   INPUT_ROWS.forEach(function(r){
