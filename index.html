@@ -633,8 +633,8 @@ var SEGMENTS = [
 
 var INPUT_ROWS = [
   { key:"basic",   label:"Basic",       agg:"avg" },
+  { key:"bsa",     label:"BSA",         agg:"sum" },
   { key:"gi",      label:"GI",          agg:"sum" },
-  { key:"bsa",     label:"Base stat adj. (BSA)", agg:"sum" },
   { key:"dev",     label:"Development", agg:"sum" },
   { key:"trainer", label:"Trainer",     agg:"sum" }
 ];
@@ -1576,8 +1576,8 @@ function buildT5Table(){
 
   var editableRows = [
     { key:"basic", label:"Basic", agg:"avg" },
-    { key:"gi",    label:"GI",    agg:"sum" },
     { key:"bsa",   label:"BSA",   agg:"sum" },
+    { key:"gi",    label:"GI",    agg:"sum" },
     { key:"dev",   label:"Development", agg:"sum" }
   ];
 
